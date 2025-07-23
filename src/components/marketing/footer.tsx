@@ -46,18 +46,24 @@ export function MarketingFooter({ className }: MarketingFooterProps) {
             <div className="flex gap-3">
               <Button 
                 size="sm"
-                aria-label="Clone this repository and start building"
+                asChild
+                aria-label="View repository on GitHub"
               >
-                <GitBranch className="w-4 h-4 mr-2" />
-                Clone & Start Building
+                <a href="https://github.com/dustinbturner/nextjsboilerplate.com" target="_blank" rel="noopener noreferrer">
+                  <GitBranch className="w-4 h-4 mr-2" />
+                  View Repository
+                </a>
               </Button>
               <Button 
                 size="sm" 
                 variant="outline"
+                asChild
                 aria-label="Star this project on GitHub"
               >
-                <Star className="w-4 h-4 mr-2" />
-                Star on GitHub
+                <a href="https://github.com/dustinbturner/nextjsboilerplate.com" target="_blank" rel="noopener noreferrer">
+                  <Star className="w-4 h-4 mr-2" />
+                  Star on GitHub
+                </a>
               </Button>
             </div>
           </div>

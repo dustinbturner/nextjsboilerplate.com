@@ -19,6 +19,7 @@ import {
   Sparkles
 } from "lucide-react"
 import { useState } from "react"
+import Link from "next/link"
 
 interface MarketingHeroProps {
   className?: string
@@ -109,13 +110,17 @@ export function MarketingHero({ className }: MarketingHeroProps) {
           
           {/* CTA Buttons */}
           <div className="mt-10 flex items-center gap-x-6">
-            <Button size="lg" className="font-semibold px-8">
-              <GitBranch className="w-4 h-4 mr-2" />
-              Get started
+            <Button size="lg" className="font-semibold px-8" asChild>
+              <a href="https://github.com/dustinbturner/nextjsboilerplate.com" target="_blank" rel="noopener noreferrer">
+                <GitBranch className="w-4 h-4 mr-2" />
+                View Repository
+              </a>
             </Button>
-            <Button size="lg" variant="outline">
-              <BookOpen className="w-4 h-4 mr-2" />
-              Read the docs
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/docs">
+                <BookOpen className="w-4 h-4 mr-2" />
+                Read the docs
+              </Link>
             </Button>
           </div>
           

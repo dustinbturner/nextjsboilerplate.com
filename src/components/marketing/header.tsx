@@ -62,17 +62,23 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
               <Button 
                 variant="outline" 
                 size="sm"
+                asChild
                 aria-label="Star this project on GitHub"
               >
-                <Star className="w-4 h-4 mr-2" />
-                Star
+                <a href="https://github.com/dustinbturner/nextjsboilerplate.com" target="_blank" rel="noopener noreferrer">
+                  <Star className="w-4 h-4 mr-2" />
+                  Star
+                </a>
               </Button>
               <Button 
                 size="sm"
-                aria-label="Clone this repository"
+                asChild
+                aria-label="View repository on GitHub"
               >
-                <GitBranch className="w-4 h-4 mr-2" />
-                Clone
+                <a href="https://github.com/dustinbturner/nextjsboilerplate.com" target="_blank" rel="noopener noreferrer">
+                  <GitBranch className="w-4 h-4 mr-2" />
+                  View Repo
+                </a>
               </Button>
             </div>
           </nav>
@@ -116,18 +122,24 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
                   variant="outline" 
                   size="sm" 
                   className="w-full"
+                  asChild
                   aria-label="Star this project on GitHub"
                 >
-                  <Star className="w-4 h-4 mr-2" />
-                  Star on GitHub
+                  <a href="https://github.com/dustinbturner/nextjsboilerplate.com" target="_blank" rel="noopener noreferrer">
+                    <Star className="w-4 h-4 mr-2" />
+                    Star on GitHub
+                  </a>
                 </Button>
                 <Button 
                   size="sm" 
                   className="w-full"
-                  aria-label="Clone this repository"
+                  asChild
+                  aria-label="View repository on GitHub"
                 >
-                  <GitBranch className="w-4 h-4 mr-2" />
-                  Clone Repository
+                  <a href="https://github.com/dustinbturner/nextjsboilerplate.com" target="_blank" rel="noopener noreferrer">
+                    <GitBranch className="w-4 h-4 mr-2" />
+                    View Repository
+                  </a>
                 </Button>
               </div>
             </nav>
