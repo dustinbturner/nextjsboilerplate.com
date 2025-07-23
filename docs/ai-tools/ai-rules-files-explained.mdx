@@ -1,0 +1,370 @@
+# AI Rules Files Explained
+
+## What Problem Does This Solve?
+
+AI coding assistants like Cursor and Windsurf need consistent context about your project to provide accurate, helpful suggestions. Without proper rules files, you get generic advice that doesn't match your project's patterns, architecture, or preferences.
+
+## What Happens If You Get This Wrong?
+
+- **Inconsistent code suggestions** that don't match your patterns
+- **Wrong framework usage** (e.g., Pages Router instead of App Router)
+- **Security anti-patterns** suggested by AI
+- **Wasted time** correcting AI-generated code
+
+## Understanding AI Rules Files
+
+### What Are Rules Files?
+
+Rules files are configuration files that tell AI assistants about your project's:
+- Architecture decisions
+- Coding patterns and conventions
+- Security requirements
+- Framework-specific best practices
+- Common pitfalls to avoid
+
+### Types of Rules Files
+
+| File | Purpose | AI Assistant |
+|------|---------|--------------|
+| `.cursorrules` | Cursor IDE configuration | Cursor |
+| `.windsurfrules` | Windsurf IDE configuration | Windsurf |
+| `claude-project-context.md` | Claude Projects context | Claude |
+
+## .cursorrules File Structure
+
+### Basic Template
+
+```
+# NextJS Boilerplate - Cursor Rules
+
+## Project Context
+This is a Next.js 15+ application using:
+- App Router (NOT Pages Router)
+- Supabase for auth and database
+- Tailwind CSS + Shadcn UI
+- TypeScript
+- Drizzle ORM
+
+## Critical Rules
+
+### 🚨 NEVER GENERATE THESE PATTERNS
+```typescript
+// ❌ NEVER use auth-helpers-nextjs (deprecated)
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+
+// ❌ NEVER use individual cookie methods
+cookies: {
+  get(name: string) { return cookieStore.get(name) }
+  set(name: string, value: string) { cookieStore.set(name, value) }
+}
+```
+
+### ✅ ALWAYS USE THESE PATTERNS
+```typescript
+// ✅ Use @supabase/ssr
+import { createServerClient } from '@supabase/ssr'
+
+// ✅ Use getAll/setAll pattern
+cookies: {
+  getAll() { return cookieStore.getAll() },
+  setAll(cookiesToSet) { /* proper implementation */ }
+}
+```
+
+## Architecture Decisions
+- Use Server Components by default
+- Only use 'use client' when necessary (hooks, interactions, browser APIs)
+- Implement Row Level Security (RLS) for all database tables
+- Use server actions for form submissions
+- Follow security-first principles
+
+## Code Style
+- Use TypeScript strictly
+- Prefer composition over inheritance
+- Use descriptive variable names
+- Add JSDoc comments for complex functions
+- Follow the existing file structure patterns
+```
+
+### Advanced .cursorrules Configuration
+
+```
+# Advanced Cursor Rules for NextJS Boilerplate
+
+## File Organization Rules
+- Components go in `src/components/[feature]/`
+- Utilities go in `src/lib/[category]/`
+- Types go in `src/types/`
+- Server actions go in `src/app/[route]/actions.ts`
+
+## Security Rules
+- ALWAYS enable RLS on new database tables
+- NEVER expose service role keys to client
+- Use Zod for input validation
+- Implement proper error handling
+
+## Performance Rules
+- Prefer Server Components for static content
+- Use dynamic imports for heavy client components
+- Implement proper loading states
+- Use Suspense boundaries appropriately
+
+## Database Rules
+- Use Drizzle ORM for type-safe queries
+- Follow RLS patterns for user data isolation
+- Use proper indexes for query performance
+- Implement soft deletes where appropriate
+
+## Common Patterns to Follow
+```typescript
+// Server Component data fetching
+export default async function Page() {
+  const data = await fetchData()
+  return <Component data={data} />
+}
+
+// Client Component with proper typing
+'use client'
+interface Props {
+  data: DataType
+}
+export function Component({ data }: Props) {
+  // Interactive logic here
+}
+
+// Server Action pattern
+'use server'
+export async function actionName(formData: FormData) {
+  // Validation, processing, revalidation
+}
+```
+
+## Anti-Patterns to Avoid
+- Don't use useEffect for data fetching in Server Components
+- Don't mix Server and Client Component patterns
+- Don't bypass RLS with service role key on client
+- Don't use any/unknown types without good reason
+```
+
+## .windsurfrules File Structure
+
+```
+# NextJS Boilerplate - Windsurf Rules
+
+You are working on a Next.js 15+ application with App Router, Supabase, and TypeScript.
+
+## CRITICAL: Supabase Auth Implementation
+
+NEVER generate these deprecated patterns:
+```typescript
+// ❌ BREAKS APPLICATION
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
+cookies: {
+  get(name: string) { return cookieStore.get(name) }
+}
+```
+
+ALWAYS use this pattern:
+```typescript
+// ✅ CORRECT IMPLEMENTATION
+import { createServerClient } from '@supabase/ssr'
+cookies: {
+  getAll() { return cookieStore.getAll() },
+  setAll(cookiesToSet) { /* proper setAll implementation */ }
+}
+```
+
+## Architecture Guidelines
+1. Use Server Components by default
+2. Add 'use client' only when needed for:
+   - React hooks (useState, useEffect, etc.)
+   - Event handlers (onClick, onSubmit, etc.)
+   - Browser APIs (localStorage, navigator, etc.)
+
+3. Security First:
+   - Enable RLS on all tables
+   - Validate inputs with Zod
+   - Use environment variables properly
+   - Never expose secrets to client
+
+4. File Structure:
+   - Pages: `src/app/[route]/page.tsx`
+   - Components: `src/components/[feature]/`
+   - Utils: `src/lib/[category]/`
+   - Types: `src/types/`
+
+## Code Generation Rules
+- Always use TypeScript with proper typing
+- Include error handling in async functions
+- Add loading states for user interactions
+- Follow the existing patterns in the codebase
+- Use Tailwind classes for styling
+- Implement proper form validation
+
+## Common Patterns
+```typescript
+// Server Component
+export default async function Page() {
+  const data = await fetchData()
+  return <ClientComponent data={data} />
+}
+
+// Client Component
+'use client'
+export function ClientComponent({ data }: { data: DataType }) {
+  const [state, setState] = useState(initialState)
+  return <div>{/* Interactive UI */}</div>
+}
+```
+```
+
+## Claude Project Context
+
+### Setting Up Claude Projects
+
+1. **Create a new project** in Claude
+2. **Add project knowledge** with key files:
+   - Your `.cursorrules` or `.windsurfrules`
+   - Key documentation files
+   - Schema files
+   - Example components
+
+3. **Set project instructions**:
+
+```markdown
+# NextJS Boilerplate Project Context
+
+## Project Overview
+This is a Next.js 15+ application using App Router, Supabase, TypeScript, and Tailwind CSS.
+
+## Key Architecture Decisions
+- Server Components by default, Client Components only when needed
+- Supabase for authentication and database with RLS
+- Security-first approach with proper environment variable handling
+- Modern patterns with @supabase/ssr (NOT auth-helpers-nextjs)
+
+## Critical Implementation Rules
+1. NEVER use deprecated @supabase/auth-helpers-nextjs
+2. ALWAYS use getAll/setAll cookie pattern with @supabase/ssr
+3. Enable RLS on all database tables
+4. Use Server Actions for form submissions
+5. Validate inputs with Zod
+
+## File Structure
+- `src/app/` - App Router pages and layouts
+- `src/components/` - Reusable components
+- `src/lib/` - Utilities and configurations
+- `src/types/` - TypeScript type definitions
+
+When helping with this project, always follow these patterns and never suggest deprecated approaches.
+```
+
+## Best Practices for Rules Files
+
+### 1. Keep Rules Specific and Actionable
+
+```
+❌ Generic: "Use good coding practices"
+✅ Specific: "Use Server Components by default, only add 'use client' for hooks, events, or browser APIs"
+```
+
+### 2. Include Anti-Patterns
+
+```
+❌ Only positive examples
+✅ Show both what TO do and what NOT to do:
+
+// ❌ Don't do this
+const badPattern = () => { /* ... */ }
+
+// ✅ Do this instead  
+const goodPattern = () => { /* ... */ }
+```
+
+### 3. Provide Context
+
+```
+❌ Just rules: "Use RLS"
+✅ With context: "Use RLS because it provides database-level security that can't be bypassed by client-side code"
+```
+
+### 4. Update Regularly
+
+- Review rules monthly
+- Update when you discover new patterns
+- Remove outdated rules
+- Add new anti-patterns you've encountered
+
+## Testing Your Rules Files
+
+### 1. Test with Common Scenarios
+
+Ask your AI assistant to:
+- Create a new page with authentication
+- Add a form with validation
+- Set up a database table
+- Create a reusable component
+
+### 2. Check for Consistency
+
+- Do suggestions match your architecture?
+- Are security patterns followed?
+- Does the code style match your preferences?
+
+### 3. Iterate and Improve
+
+```typescript
+// Add this to your rules when you notice AI making mistakes
+## Common AI Mistakes to Avoid
+- Suggesting useEffect for data fetching in Server Components
+- Using deprecated Supabase patterns
+- Not implementing proper error boundaries
+- Missing TypeScript types
+```
+
+## Templates and Examples
+
+### Template Files Location
+
+```
+docs/10 - AI_Development_Tools/templates/
+├── .cursorrules              # Cursor rules template
+├── .windsurfrules           # Windsurf rules template
+├── claude-project-context.md # Claude project template
+└── prompt-templates.md      # Common prompt patterns
+```
+
+### Using the Templates
+
+1. **Copy the appropriate template** to your project root
+2. **Customize** with your specific patterns and preferences
+3. **Test** with your AI assistant
+4. **Iterate** based on the quality of suggestions
+
+## Troubleshooting Rules Files
+
+### AI Not Following Rules
+
+1. **Check file location**: Rules files must be in project root
+2. **Restart AI assistant**: Some changes require restart
+3. **Be more specific**: Vague rules lead to inconsistent behavior
+4. **Add examples**: Show concrete code patterns
+
+### Conflicting Suggestions
+
+1. **Prioritize rules**: Use "CRITICAL" or "NEVER" for important rules
+2. **Remove contradictions**: Ensure rules don't conflict
+3. **Update regularly**: Remove outdated patterns
+
+### Rules Too Restrictive
+
+1. **Balance specificity with flexibility**
+2. **Focus on critical patterns** rather than minor style preferences
+3. **Allow for exceptions** when explicitly needed
+
+## Next Steps
+
+- [Cursor Setup and Configuration](./cursor-setup-and-configuration.md) - Set up Cursor with rules
+- [Windsurf Setup and Configuration](./windsurf-setup-and-configuration.md) - Set up Windsurf with rules
+- [Effective Prompt Engineering](./effective-prompt-engineering.md) - Write better prompts
+- [Templates](./templates/) - Use the provided templates

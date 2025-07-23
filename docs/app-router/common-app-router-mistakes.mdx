@@ -1,0 +1,622 @@
+# Common App Router Mistakes
+
+## What Problem Does This Solve?
+
+The App Router is fundamentally different from the Pages Router, and developers often make critical mistakes that lead to poor performance, security issues, and broken functionality.
+
+## What Happens If You Get This Wrong?
+
+- **Hydration errors** that break your app
+- **Performance degradation** from unnecessary client-side JavaScript
+- **Security vulnerabilities** from improper data handling
+- **SEO issues** from incorrect rendering patterns
+
+## Top 10 App Router Mistakes
+
+### 1. Using 'use client' Everywhere
+
+#### ❌ WRONG: Making Everything a Client Component
+
+```tsx
+// ❌ DON'T DO THIS - Unnecessary client component
+'use client'
+
+function UserProfile({ user }) {
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+      <p>Joined: {user.createdAt}</p>
+    </div>
+  )
+}
+```
+
+#### ✅ CORRECT: Server Component by Default
+
+```tsx
+// ✅ DO THIS - Server component (no JavaScript sent to browser)
+function UserProfile({ user }) {
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+      <p>Joined: {new Date(user.createdAt).toLocaleDateString()}</p>
+    </div>
+  )
+}
+```
+
+**Why this matters:**
+- Server components send 0 KB of JavaScript to the browser
+- Better performance and SEO
+- Can access server-side resources directly
+
+### 2. Using useEffect for Data Fetching in Server Components
+
+#### ❌ WRONG: useEffect in Server Components
+
+```tsx
+// ❌ DON'T DO THIS - Can't use hooks in Server Components
+import { useEffect, useState } from 'react'
+
+function UserDashboard() {
+  const [users, setUsers] = useState([])
+  
+  useEffect(() => {
+    fetchUsers().then(setUsers) // This won't work!
+  }, [])
+  
+  return <div>{/* render users */}</div>
+}
+```
+
+#### ✅ CORRECT: Async Server Component
+
+```tsx
+// ✅ DO THIS - Direct async data fetching
+async function UserDashboard() {
+  const users = await fetchUsers() // Direct server-side fetch
+  
+  return (
+    <div>
+      {users.map(user => (
+        <UserCard key={user.id} user={user} />
+      ))}
+    </div>
+  )
+}
+```
+
+**Why this matters:**
+- Data is fetched on the server, not the client
+- No loading states needed for initial data
+- Better performance and SEO
+
+### 3. Mixing Server and Client Component Patterns
+
+#### ❌ WRONG: Inconsistent Component Types
+
+```tsx
+// ❌ DON'T DO THIS - Mixing patterns incorrectly
+'use client'
+
+import { useState } from 'react'
+
+function Dashboard() {
+  const [filter, setFilter] = useState('')
+  
+  // This won't work - can't call async functions in client components
+  const users = await fetchUsers() // Error!
+  
+  return <div>{/* ... */}</div>
+}
+```
+
+#### ✅ CORRECT: Proper Composition
+
+```tsx
+// ✅ DO THIS - Server component for data, client for interactivity
+async function Dashboard() {
+  const users = await fetchUsers() // Server-side data fetching
+  
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      <UserList initialUsers={users} /> {/* Pass data to client component */}
+    </div>
+  )
+}
+
+// Separate client component for interactivity
+'use client'
+function UserList({ initialUsers }) {
+  const [filter, setFilter] = useState('')
+  const [users, setUsers] = useState(initialUsers)
+  
+  // Interactive logic here
+  return <div>{/* filtered users */}</div>
+}
+```
+
+### 4. Incorrect File Structure
+
+#### ❌ WRONG: Pages Router Structure in App Router
+
+```
+src/
+├── pages/           # ❌ Wrong - this is Pages Router
+│   ├── index.tsx
+│   └── about.tsx
+└── components/
+```
+
+#### ✅ CORRECT: App Router Structure
+
+```
+src/
+├── app/             # ✅ Correct - App Router
+│   ├── page.tsx     # Home page (/)
+│   ├── about/
+│   │   └── page.tsx # About page (/about)
+│   └── layout.tsx   # Root layout
+└── components/
+```
+
+### 5. Misunderstanding Layouts
+
+#### ❌ WRONG: Recreating Layout Logic
+
+```tsx
+// ❌ DON'T DO THIS - Manually adding navigation to every page
+function AboutPage() {
+  return (
+    <div>
+      <Navigation />      {/* Repeated in every page */}
+      <Header />          {/* Repeated in every page */}
+      <main>
+        <h1>About</h1>
+        {/* page content */}
+      </main>
+      <Footer />          {/* Repeated in every page */}
+    </div>
+  )
+}
+```
+
+#### ✅ CORRECT: Using Layout Components
+
+```tsx
+// ✅ DO THIS - layout.tsx handles shared UI
+function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <Navigation />
+        <Header />
+        <main>{children}</main> {/* Page content goes here */}
+        <Footer />
+      </body>
+    </html>
+  )
+}
+
+// ✅ Pages are clean and focused
+function AboutPage() {
+  return (
+    <div>
+      <h1>About</h1>
+      {/* Just the page-specific content */}
+    </div>
+  )
+}
+```
+
+### 6. Improper Error Handling
+
+#### ❌ WRONG: No Error Boundaries
+
+```tsx
+// ❌ DON'T DO THIS - No error handling
+async function UserProfile({ userId }) {
+  const user = await fetchUser(userId) // What if this fails?
+  
+  return <div>{user.name}</div> // Could crash the entire page
+}
+```
+
+#### ✅ CORRECT: Proper Error Handling
+
+```tsx
+// ✅ DO THIS - Handle errors gracefully
+async function UserProfile({ userId }) {
+  try {
+    const user = await fetchUser(userId)
+    
+    if (!user) {
+      return <div>User not found</div>
+    }
+    
+    return <div>{user.name}</div>
+  } catch (error) {
+    console.error('Failed to fetch user:', error)
+    return <div>Failed to load user profile</div>
+  }
+}
+
+// ✅ Or use error.tsx for automatic error boundaries
+// app/profile/error.tsx
+'use client'
+export default function Error({ error, reset }) {
+  return (
+    <div>
+      <h2>Something went wrong!</h2>
+      <button onClick={() => reset()}>Try again</button>
+    </div>
+  )
+}
+```
+
+### 7. Incorrect Data Fetching Patterns
+
+#### ❌ WRONG: Client-Side Data Fetching for Initial Data
+
+```tsx
+// ❌ DON'T DO THIS - Unnecessary client-side fetching
+'use client'
+
+function ProductList() {
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  
+  useEffect(() => {
+    fetchProducts()
+      .then(setProducts)
+      .finally(() => setLoading(false))
+  }, [])
+  
+  if (loading) return <div>Loading...</div>
+  
+  return <div>{/* render products */}</div>
+}
+```
+
+#### ✅ CORRECT: Server-Side Data Fetching
+
+```tsx
+// ✅ DO THIS - Server-side fetching with loading UI
+async function ProductList() {
+  const products = await fetchProducts() // No loading state needed
+  
+  return (
+    <div>
+      {products.map(product => (
+        <ProductCard key={product.id} product={product} />
+      ))}
+    </div>
+  )
+}
+
+// ✅ Use loading.tsx for loading states
+// app/products/loading.tsx
+export default function Loading() {
+  return <div>Loading products...</div>
+}
+```
+
+### 8. Misusing Server Actions
+
+#### ❌ WRONG: Client-Side Form Handling
+
+```tsx
+// ❌ DON'T DO THIS - Unnecessary client-side form handling
+'use client'
+
+function ContactForm() {
+  const [formData, setFormData] = useState({})
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    
+    // Client-side API call
+    const response = await fetch('/api/contact', {
+      method: 'POST',
+      body: JSON.stringify(formData)
+    })
+    
+    // Handle response...
+  }
+  
+  return <form onSubmit={handleSubmit}>{/* form fields */}</form>
+}
+```
+
+#### ✅ CORRECT: Server Actions
+
+```tsx
+// ✅ DO THIS - Server Actions for form handling
+import { redirect } from 'next/navigation'
+
+async function submitContact(formData: FormData) {
+  'use server'
+  
+  const name = formData.get('name')
+  const email = formData.get('email')
+  
+  // Server-side processing
+  await saveContact({ name, email })
+  
+  redirect('/thank-you')
+}
+
+function ContactForm() {
+  return (
+    <form action={submitContact}>
+      <input name="name" required />
+      <input name="email" type="email" required />
+      <button type="submit">Submit</button>
+    </form>
+  )
+}
+```
+
+### 9. Incorrect Metadata Handling
+
+#### ❌ WRONG: Client-Side Head Management
+
+```tsx
+// ❌ DON'T DO THIS - Can't use Head in App Router
+import Head from 'next/head'
+
+function AboutPage() {
+  return (
+    <>
+      <Head>
+        <title>About Us</title> {/* This won't work in App Router */}
+      </Head>
+      <div>About content</div>
+    </>
+  )
+}
+```
+
+#### ✅ CORRECT: Metadata API
+
+```tsx
+// ✅ DO THIS - Use Metadata API
+import { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'About Us',
+  description: 'Learn more about our company',
+}
+
+export default function AboutPage() {
+  return <div>About content</div>
+}
+
+// ✅ Or dynamic metadata
+export async function generateMetadata({ params }): Promise<Metadata> {
+  const product = await fetchProduct(params.id)
+  
+  return {
+    title: product.name,
+    description: product.description,
+  }
+}
+```
+
+### 10. Improper Route Protection
+
+#### ❌ WRONG: Client-Side Route Protection
+
+```tsx
+// ❌ DON'T DO THIS - Client-side auth check
+'use client'
+
+function DashboardPage() {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  
+  useEffect(() => {
+    checkAuth().then(user => {
+      if (!user) {
+        router.push('/login') // Too late - page already rendered
+      }
+      setUser(user)
+      setLoading(false)
+    })
+  }, [])
+  
+  if (loading) return <div>Loading...</div>
+  if (!user) return <div>Redirecting...</div>
+  
+  return <div>Dashboard content</div>
+}
+```
+
+#### ✅ CORRECT: Server-Side Route Protection
+
+```tsx
+// ✅ DO THIS - Server-side auth check
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+
+export default async function DashboardPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    redirect('/login') // Server-side redirect before rendering
+  }
+  
+  // User is authenticated, render dashboard
+  return <div>Dashboard content for {user.email}</div>
+}
+```
+
+## Performance Anti-Patterns
+
+### Unnecessary Client Components
+
+```tsx
+// ❌ Performance killer - sends unnecessary JavaScript
+'use client'
+
+function StaticContent() {
+  return (
+    <div>
+      <h1>Welcome to our site</h1>
+      <p>This is static content that doesn't need JavaScript</p>
+    </div>
+  )
+}
+
+// ✅ Performance optimized - zero JavaScript
+function StaticContent() {
+  return (
+    <div>
+      <h1>Welcome to our site</h1>
+      <p>This is static content that doesn't need JavaScript</p>
+    </div>
+  )
+}
+```
+
+### Over-fetching Data
+
+```tsx
+// ❌ Over-fetching - gets all user data for just the name
+async function UserGreeting({ userId }) {
+  const user = await fetchFullUserProfile(userId) // Gets everything
+  
+  return <div>Hello, {user.name}!</div>
+}
+
+// ✅ Efficient - only gets what's needed
+async function UserGreeting({ userId }) {
+  const user = await fetchUserName(userId) // Gets only name
+  
+  return <div>Hello, {user.name}!</div>
+}
+```
+
+## Security Anti-Patterns
+
+### Exposing Sensitive Data
+
+```tsx
+// ❌ Security risk - exposes sensitive server data to client
+'use client'
+
+function UserProfile({ user }) {
+  console.log(user) // This logs to browser console!
+  
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      {/* user object contains sensitive data sent to browser */}
+    </div>
+  )
+}
+
+// ✅ Secure - only send necessary data to client
+async function UserProfilePage({ userId }) {
+  const user = await fetchUser(userId) // Full data on server
+  
+  // Only pass safe data to client component
+  const safeUserData = {
+    name: user.name,
+    avatar: user.avatar,
+    joinDate: user.createdAt
+  }
+  
+  return <UserProfile user={safeUserData} />
+}
+```
+
+## Debugging Common Issues
+
+### Hydration Mismatches
+
+```tsx
+// ❌ Causes hydration errors
+function CurrentTime() {
+  return <div>Current time: {new Date().toLocaleString()}</div>
+}
+
+// ✅ Fixes hydration issues
+'use client'
+
+import { useEffect, useState } from 'react'
+
+function CurrentTime() {
+  const [time, setTime] = useState('')
+  
+  useEffect(() => {
+    setTime(new Date().toLocaleString())
+  }, [])
+  
+  return <div>Current time: {time || 'Loading...'}</div>
+}
+```
+
+### "Cannot read properties of undefined"
+
+```tsx
+// ❌ Doesn't handle loading states
+async function UserProfile({ userId }) {
+  const user = await fetchUser(userId)
+  
+  return <div>{user.profile.bio}</div> // Crashes if profile is null
+}
+
+// ✅ Handles all states properly
+async function UserProfile({ userId }) {
+  const user = await fetchUser(userId)
+  
+  if (!user) {
+    return <div>User not found</div>
+  }
+  
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      {user.profile?.bio && <p>{user.profile.bio}</p>}
+    </div>
+  )
+}
+```
+
+## Migration Checklist
+
+When moving from Pages Router to App Router:
+
+### ✅ File Structure
+- [ ] Move pages from `pages/` to `src/app/`
+- [ ] Rename `index.tsx` to `page.tsx`
+- [ ] Create `layout.tsx` files for shared UI
+- [ ] Move API routes to `src/app/api/`
+
+### ✅ Component Updates
+- [ ] Remove unnecessary `'use client'` directives
+- [ ] Convert data fetching from `useEffect` to async Server Components
+- [ ] Update metadata from `<Head>` to Metadata API
+- [ ] Replace `getServerSideProps` with Server Components
+
+### ✅ Routing Updates
+- [ ] Update `next/router` imports to `next/navigation`
+- [ ] Change `router.push()` to `redirect()` in Server Components
+- [ ] Update dynamic routes syntax if needed
+
+### ✅ Performance Optimization
+- [ ] Audit Client Components - minimize usage
+- [ ] Implement proper loading states with `loading.tsx`
+- [ ] Add error boundaries with `error.tsx`
+- [ ] Optimize data fetching patterns
+
+## Next Steps
+
+- [When to Use 'use client'](./when-to-use-use-client.md) - Clear guidelines for Client Components
+- [Data Fetching Patterns](./data-fetching-patterns.md) - Proper data fetching in App Router
+- [Server Actions Explained](./server-actions-explained.md) - Modern form handling

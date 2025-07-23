@@ -1,0 +1,191 @@
+# Understanding the File Structure
+
+## What Problem Does This Solve?
+
+New developers often feel overwhelmed by the folder structure of a modern Next.js project. This guide provides a mental map of where everything goes and why.
+
+## What Happens If You Get This Wrong?
+
+- Code becomes disorganized and hard to maintain
+- Team members can't find files quickly
+- Mixing client and server code in wrong places
+- Breaking Next.js conventions leads to unexpected behavior
+
+## Project Overview
+
+```
+nextjs-boilerplate/
+├── src/                          # Main application code
+│   ├── app/                      # Next.js App Router (pages & layouts)
+│   ├── components/               # Reusable UI components
+│   ├── lib/                      # Utility functions & configurations
+│   └── types/                    # TypeScript type definitions
+├── docs/                         # Documentation (you are here!)
+├── public/                       # Static assets
+├── drizzle/                      # Database migrations & schema
+└── supabase/                     # Supabase configuration
+```
+
+## The `src/app` Directory (App Router)
+
+This is where your pages and layouts live:
+
+```
+src/app/
+├── globals.css                   # Global styles
+├── layout.tsx                    # Root layout (wraps all pages)
+├── page.tsx                      # Home page (/)
+├── login/
+│   └── page.tsx                  # Login page (/login)
+├── dashboard/
+│   ├── layout.tsx                # Dashboard layout
+│   ├── page.tsx                  # Dashboard home (/dashboard)
+│   └── settings/
+│       └── page.tsx              # Settings page (/dashboard/settings)
+└── api/                          # API routes
+    └── auth/
+        └── route.ts              # Auth API endpoint
+```
+
+### Key Concepts
+
+- **`page.tsx`**: Creates a route (URL)
+- **`layout.tsx`**: Wraps child pages with shared UI
+- **`loading.tsx`**: Loading UI for that route
+- **`error.tsx`**: Error UI for that route
+
+## The `src/components` Directory
+
+Organize components by feature or type:
+
+```
+src/components/
+├── ui/                           # Base UI components (buttons, inputs)
+│   ├── button.tsx
+│   ├── input.tsx
+│   └── index.ts                  # Export all UI components
+├── auth/                         # Authentication-related components
+│   ├── login-form.tsx
+│   └── auth-provider.tsx
+├── dashboard/                    # Dashboard-specific components
+│   ├── sidebar.tsx
+│   └── user-menu.tsx
+└── shared/                       # Components used across features
+    ├── header.tsx
+    └── footer.tsx
+```
+
+## The `src/lib` Directory
+
+Utility functions and configurations:
+
+```
+src/lib/
+├── supabase/                     # Supabase client configurations
+│   ├── client.ts                 # Browser client
+│   ├── server.ts                 # Server client
+│   └── middleware.ts             # Middleware client
+├── auth/                         # Authentication utilities
+│   ├── config.ts
+│   └── helpers.ts
+├── db/                           # Database utilities
+│   ├── schema.ts                 # Drizzle schema
+│   └── queries.ts                # Common queries
+└── utils.ts                      # General utility functions
+```
+
+## Configuration Files (Root Level)
+
+```
+├── .env.local                    # Local environment variables (not committed)
+├── .env.example                  # Example environment file
+├── next.config.js                # Next.js configuration
+├── tailwind.config.ts            # Tailwind CSS configuration
+├── drizzle.config.ts             # Database configuration
+├── package.json                  # Dependencies and scripts
+└── tsconfig.json                 # TypeScript configuration
+```
+
+## File Naming Conventions
+
+### ✅ DO
+
+- Use kebab-case for files: `user-profile.tsx`
+- Use PascalCase for components: `UserProfile`
+- Use camelCase for functions: `getUserProfile`
+- Be descriptive: `auth-callback.tsx` not `callback.tsx`
+
+### ❌ DON'T
+
+- Mix naming conventions in the same project
+- Use generic names like `utils.tsx` or `helpers.tsx`
+- Create deeply nested folder structures (max 3-4 levels)
+
+## Special Files in App Router
+
+| File | Purpose | Example |
+|------|---------|---------|
+| `layout.tsx` | Shared UI for routes | Navigation, sidebars |
+| `page.tsx` | Route component | The actual page content |
+| `loading.tsx` | Loading state | Skeleton, spinners |
+| `error.tsx` | Error boundary | Error messages |
+| `not-found.tsx` | 404 page | Custom 404 design |
+| `route.ts` | API endpoints | REST API handlers |
+
+## Mental Model: Where Does This Go?
+
+### Pages & Routing → `src/app/`
+- URL routes
+- Page layouts
+- API endpoints
+
+### Reusable UI → `src/components/`
+- Buttons, forms, modals
+- Feature-specific components
+- Shared components
+
+### Logic & Utils → `src/lib/`
+- Database connections
+- Authentication helpers
+- Utility functions
+
+### Static Assets → `public/`
+- Images, icons
+- Fonts
+- Manifest files
+
+## Common Mistakes
+
+### ❌ Putting Components in `app/`
+```
+src/app/components/button.tsx  # Wrong!
+```
+
+### ✅ Components Go in `components/`
+```
+src/components/ui/button.tsx   # Correct!
+```
+
+### ❌ Business Logic in Components
+```tsx
+// ❌ Don't do this in a component
+const UserProfile = () => {
+  const hashPassword = (password: string) => { /* ... */ }
+  // ...
+}
+```
+
+### ✅ Business Logic in `lib/`
+```tsx
+// ✅ Put utilities in lib/
+// src/lib/auth/password.ts
+export const hashPassword = (password: string) => { /* ... */ }
+
+// src/components/auth/user-profile.tsx
+import { hashPassword } from '@/lib/auth/password'
+```
+
+## Next Steps
+
+- [Your First Feature](./your-first-feature.md) - Build something to understand the flow
+- [Server vs Client Components](../02%20-%20Next.js%20App%20Router%20Mastery/server-vs-client-components.md) - Understand where code runs

@@ -1,0 +1,522 @@
+# Server vs Client Components
+
+## What Problem Does This Solve?
+
+The distinction between Server and Client Components is the **#1 confusion point** for developers using Next.js App Router. Understanding this correctly is crucial for performance, security, and proper data flow.
+
+## What Happens If You Get This Wrong?
+
+- **Performance issues**: Unnecessary JavaScript sent to the browser
+- **Security vulnerabilities**: Server-side secrets exposed to client
+- **Hydration errors**: Mismatched server/client rendering
+- **Poor user experience**: Slow loading and broken functionality
+
+## The Mental Model
+
+Think of your app as having two environments:
+
+### 🖥️ Server Components (Default)
+- **Where**: Run on the server during build or request time
+- **When**: Before the HTML is sent to the browser
+- **Access**: Can access databases, file systems, server-side APIs
+- **JavaScript**: Not included in the client bundle
+
+### 🌐 Client Components (Opt-in with 'use client')
+- **Where**: Run in the browser after hydration
+- **When**: After the HTML is loaded and JavaScript executes
+- **Access**: Can access browser APIs, user interactions, state
+- **JavaScript**: Included in the client bundle
+
+## Quick Decision Tree
+
+```
+Do you need user interaction? (clicks, forms, state)
+├─ YES → Client Component ('use client')
+└─ NO → Server Component (default)
+    ├─ Do you need to fetch data?
+    │  ├─ YES → Perfect for Server Component
+    │  └─ NO → Still use Server Component (less JS)
+    └─ Do you need browser APIs?
+        ├─ YES → Client Component
+        └─ NO → Server Component
+```
+
+## Server Components: The Default Choice
+
+### ✅ Use Server Components For:
+
+```tsx
+// ✅ Data fetching
+async function UserProfile({ userId }: { userId: string }) {
+  const user = await getUserFromDatabase(userId)
+  
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+    </div>
+  )
+}
+
+// ✅ Static content
+function AboutPage() {
+  return (
+    <div>
+      <h1>About Us</h1>
+      <p>We are a company that...</p>
+    </div>
+  )
+}
+
+// ✅ Server-side computations
+async function AnalyticsDashboard() {
+  const stats = await calculateComplexAnalytics()
+  
+  return (
+    <div>
+      <h2>Analytics</h2>
+      <p>Total users: {stats.totalUsers}</p>
+      <p>Revenue: ${stats.revenue}</p>
+    </div>
+  )
+}
+```
+
+### ✅ Benefits of Server Components:
+
+- **Zero JavaScript**: No client-side bundle impact
+- **Direct database access**: No API layer needed
+- **Better SEO**: Content is server-rendered
+- **Security**: Sensitive operations stay on server
+- **Performance**: Faster initial page loads
+
+## Client Components: When You Need Interactivity
+
+### ✅ Use Client Components For:
+
+```tsx
+'use client'
+
+import { useState } from 'react'
+
+// ✅ User interactions
+function LikeButton() {
+  const [likes, setLikes] = useState(0)
+  
+  return (
+    <button onClick={() => setLikes(likes + 1)}>
+      ❤️ {likes}
+    </button>
+  )
+}
+
+// ✅ Form handling
+function ContactForm() {
+  const [email, setEmail] = useState('')
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <input 
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Your email"
+      />
+      <button type="submit">Submit</button>
+    </form>
+  )
+}
+
+// ✅ Browser APIs
+function GeolocationComponent() {
+  const [location, setLocation] = useState(null)
+  
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setLocation(pos.coords)
+    })
+  }, [])
+  
+  return <div>Your location: {location?.latitude}, {location?.longitude}</div>
+}
+```
+
+### ✅ When You Must Use Client Components:
+
+- **React hooks**: `useState`, `useEffect`, `useContext`, etc.
+- **Event handlers**: `onClick`, `onSubmit`, `onChange`, etc.
+- **Browser APIs**: `localStorage`, `navigator`, `window`, etc.
+- **Third-party libraries**: That use browser-only features
+
+## Common Patterns & Examples
+
+### Pattern 1: Server Component with Client Island
+
+```tsx
+// app/dashboard/page.tsx (Server Component)
+import { UserStats } from './user-stats'
+import { InteractiveChart } from './interactive-chart'
+
+export default async function Dashboard() {
+  // This runs on the server
+  const stats = await fetchUserStats()
+  
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      
+      {/* Server Component - no JavaScript */}
+      <UserStats data={stats} />
+      
+      {/* Client Component - interactive */}
+      <InteractiveChart data={stats} />
+    </div>
+  )
+}
+
+// user-stats.tsx (Server Component)
+export function UserStats({ data }) {
+  return (
+    <div>
+      <h2>Your Stats</h2>
+      <p>Total posts: {data.posts}</p>
+      <p>Total likes: {data.likes}</p>
+    </div>
+  )
+}
+
+// interactive-chart.tsx (Client Component)
+'use client'
+
+import { useState } from 'react'
+
+export function InteractiveChart({ data }) {
+  const [chartType, setChartType] = useState('bar')
+  
+  return (
+    <div>
+      <select value={chartType} onChange={(e) => setChartType(e.target.value)}>
+        <option value="bar">Bar Chart</option>
+        <option value="line">Line Chart</option>
+      </select>
+      
+      {/* Render chart based on chartType */}
+      <Chart type={chartType} data={data} />
+    </div>
+  )
+}
+```
+
+### Pattern 2: Passing Server Data to Client Components
+
+```tsx
+// app/posts/page.tsx (Server Component)
+export default async function PostsPage() {
+  const posts = await fetchPosts()
+  
+  return (
+    <div>
+      <h1>Posts</h1>
+      {/* Pass server data to client component */}
+      <PostList initialPosts={posts} />
+    </div>
+  )
+}
+
+// post-list.tsx (Client Component)
+'use client'
+
+import { useState } from 'react'
+
+export function PostList({ initialPosts }) {
+  const [posts, setPosts] = useState(initialPosts)
+  const [filter, setFilter] = useState('')
+  
+  const filteredPosts = posts.filter(post => 
+    post.title.toLowerCase().includes(filter.toLowerCase())
+  )
+  
+  return (
+    <div>
+      <input 
+        placeholder="Filter posts..."
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      
+      {filteredPosts.map(post => (
+        <article key={post.id}>
+          <h2>{post.title}</h2>
+          <p>{post.excerpt}</p>
+        </article>
+      ))}
+    </div>
+  )
+}
+```
+
+## Common Mistakes & How to Fix Them
+
+### ❌ Mistake 1: Making Everything a Client Component
+
+```tsx
+// ❌ WRONG - Unnecessary client component
+'use client'
+
+function UserProfile({ user }) {
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+    </div>
+  )
+}
+```
+
+```tsx
+// ✅ CORRECT - Server component (no 'use client' needed)
+function UserProfile({ user }) {
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+    </div>
+  )
+}
+```
+
+### ❌ Mistake 2: Using Hooks in Server Components
+
+```tsx
+// ❌ WRONG - Can't use hooks in server components
+import { useState } from 'react'
+
+function ServerComponent() {
+  const [count, setCount] = useState(0) // Error!
+  
+  return <div>Count: {count}</div>
+}
+```
+
+```tsx
+// ✅ CORRECT - Add 'use client' for hooks
+'use client'
+
+import { useState } from 'react'
+
+function ClientComponent() {
+  const [count, setCount] = useState(0)
+  
+  return <div>Count: {count}</div>
+}
+```
+
+### ❌ Mistake 3: Trying to Pass Functions to Server Components
+
+```tsx
+// ❌ WRONG - Can't pass functions from client to server
+'use client'
+
+function ParentComponent() {
+  const handleClick = () => console.log('clicked')
+  
+  return (
+    <ServerComponent onClick={handleClick} /> // Error!
+  )
+}
+```
+
+```tsx
+// ✅ CORRECT - Keep interactive parts in client components
+'use client'
+
+function ParentComponent() {
+  const handleClick = () => console.log('clicked')
+  
+  return (
+    <div>
+      <ServerComponent />
+      <button onClick={handleClick}>Click me</button>
+    </div>
+  )
+}
+```
+
+### ❌ Mistake 4: Accessing Browser APIs in Server Components
+
+```tsx
+// ❌ WRONG - No browser APIs on server
+function ServerComponent() {
+  const data = localStorage.getItem('data') // Error!
+  
+  return <div>{data}</div>
+}
+```
+
+```tsx
+// ✅ CORRECT - Use client component for browser APIs
+'use client'
+
+import { useEffect, useState } from 'react'
+
+function ClientComponent() {
+  const [data, setData] = useState('')
+  
+  useEffect(() => {
+    const stored = localStorage.getItem('data')
+    setData(stored || '')
+  }, [])
+  
+  return <div>{data}</div>
+}
+```
+
+## Advanced Patterns
+
+### Composition Pattern: Server + Client
+
+```tsx
+// app/page.tsx (Server Component)
+import { Suspense } from 'react'
+import { UserGreeting } from './user-greeting'
+import { InteractiveFeatures } from './interactive-features'
+
+export default async function HomePage() {
+  return (
+    <div>
+      <Suspense fallback={<div>Loading user...</div>}>
+        <UserGreeting />
+      </Suspense>
+      
+      <InteractiveFeatures />
+    </div>
+  )
+}
+
+// user-greeting.tsx (Server Component)
+export async function UserGreeting() {
+  const user = await getCurrentUser()
+  
+  return <h1>Welcome back, {user.name}!</h1>
+}
+
+// interactive-features.tsx (Client Component)
+'use client'
+
+export function InteractiveFeatures() {
+  // All the interactive stuff here
+  return (
+    <div>
+      <SearchBox />
+      <FilterControls />
+      <InteractiveMap />
+    </div>
+  )
+}
+```
+
+### Context Pattern: Sharing State
+
+```tsx
+// providers.tsx (Client Component)
+'use client'
+
+import { createContext, useContext, useState } from 'react'
+
+const ThemeContext = createContext()
+
+export function ThemeProvider({ children }) {
+  const [theme, setTheme] = useState('light')
+  
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  )
+}
+
+export const useTheme = () => useContext(ThemeContext)
+
+// app/layout.tsx (Server Component)
+import { ThemeProvider } from './providers'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+## Performance Implications
+
+### Bundle Size Impact
+
+```tsx
+// Server Component: 0 KB JavaScript
+function ServerStats({ data }) {
+  return <div>Users: {data.userCount}</div>
+}
+
+// Client Component: ~50KB+ JavaScript (React + your code)
+'use client'
+function ClientStats({ data }) {
+  const [visible, setVisible] = useState(true)
+  return visible ? <div>Users: {data.userCount}</div> : null
+}
+```
+
+### Loading Performance
+
+```tsx
+// ✅ Fast: Server-rendered content appears immediately
+async function FastComponent() {
+  const data = await fetchData()
+  return <div>{data.content}</div>
+}
+
+// ⚠️ Slower: Client needs to load, hydrate, then fetch
+'use client'
+function SlowerComponent() {
+  const [data, setData] = useState(null)
+  
+  useEffect(() => {
+    fetchData().then(setData)
+  }, [])
+  
+  return <div>{data?.content || 'Loading...'}</div>
+}
+```
+
+## Debugging Tips
+
+### 1. Check the Network Tab
+
+- Server Components: Content appears in initial HTML
+- Client Components: Content appears after JavaScript loads
+
+### 2. Use React DevTools
+
+- Server Components: Show as static in the component tree
+- Client Components: Show with hooks and state
+
+### 3. Console Logs
+
+```tsx
+// Server Component logs appear in terminal
+console.log('This logs in the server terminal')
+
+// Client Component logs appear in browser
+'use client'
+console.log('This logs in the browser console')
+```
+
+## Next Steps
+
+- [When to Use 'use client'](./when-to-use-use-client.md) - Clear guidelines
+- [Data Fetching Patterns](./data-fetching-patterns.md) - Where to fetch data
+- [Common App Router Mistakes](./common-app-router-mistakes.md) - Avoid pitfalls

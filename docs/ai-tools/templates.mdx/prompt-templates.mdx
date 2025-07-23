@@ -1,0 +1,486 @@
+# Prompt Templates
+
+## What Problem Does This Solve?
+
+Writing effective prompts for AI coding assistants is a skill that dramatically impacts the quality of suggestions you receive. These templates provide proven patterns for common development tasks.
+
+## What Happens If You Get This Wrong?
+
+- **Vague responses** that don't address your specific needs
+- **Generic code** that doesn't match your project patterns
+- **Missing context** leading to incorrect assumptions
+- **Wasted time** iterating to get useful suggestions
+
+## Template Categories
+
+### 1. Architecture & Planning Templates
+
+#### New Feature Planning
+```
+I'm planning to add [FEATURE_NAME] to my NextJS 15 App Router project with Supabase.
+
+Context:
+- Current architecture: [Brief description]
+- Related existing features: [List related features]
+- User flow: [Describe user interaction]
+
+Requirements:
+- [Requirement 1]
+- [Requirement 2]
+- [Requirement 3]
+
+Constraints:
+- Must follow our Server Component patterns
+- Needs RLS for data security
+- Should integrate with existing auth flow
+
+Questions:
+1. What's the best approach for [specific aspect]?
+2. How should this integrate with [existing feature]?
+3. What are potential security considerations?
+
+Please provide:
+- Recommended architecture approach
+- Database schema changes needed
+- Component structure suggestions
+- Security considerations
+```
+
+#### Architecture Review
+```
+I want to review the architecture for [COMPONENT/FEATURE] in my NextJS project.
+
+Current implementation:
+```typescript
+[Paste relevant code]
+```
+
+Concerns:
+- [Specific concern 1]
+- [Specific concern 2]
+
+Project context:
+- NextJS 15 with App Router
+- Supabase with RLS
+- TypeScript strict mode
+- Security-first approach
+
+Please analyze:
+1. Does this follow NextJS App Router best practices?
+2. Are there security vulnerabilities?
+3. Is the component structure optimal?
+4. What improvements would you suggest?
+```
+
+### 2. Implementation Templates
+
+#### Server Component Implementation
+```
+I need to create a Server Component for [PURPOSE] in my NextJS App Router project.
+
+Requirements:
+- Fetch data from Supabase with RLS
+- Display [specific data/UI elements]
+- Handle [specific scenarios]
+
+Data needed:
+- [Data type 1] from [table/source]
+- [Data type 2] from [table/source]
+
+Security requirements:
+- Users should only see [access pattern]
+- RLS policy should enforce [specific rules]
+
+Please provide:
+- Complete Server Component implementation
+- Proper TypeScript typing
+- Error handling
+- Loading states if needed
+
+Context: This fits into [larger feature/page] and will be used by [user type].
+```
+
+#### Client Component Implementation
+```
+I need to create a Client Component for [INTERACTIVE_FEATURE].
+
+Functionality needed:
+- [User interaction 1]
+- [User interaction 2]
+- [State management needs]
+
+Props from parent:
+```typescript
+interface Props {
+  // Define expected props
+}
+```
+
+State requirements:
+- [State variable 1]: [purpose]
+- [State variable 2]: [purpose]
+
+Integration:
+- Calls [API/Server Action] for [purpose]
+- Updates [parent state/triggers revalidation]
+
+Please provide:
+- Complete Client Component with 'use client'
+- Proper state management
+- Event handlers
+- TypeScript interfaces
+- Error handling
+```
+
+#### Database Schema Design
+```
+I need to design a database schema for [FEATURE] in my Supabase project.
+
+Data requirements:
+- [Entity 1]: [fields and types]
+- [Entity 2]: [fields and types]
+- [Relationships between entities]
+
+Access patterns:
+- [User type] can [access pattern]
+- [User type] can [access pattern]
+
+Security requirements:
+- RLS policies needed for [specific access control]
+- [Specific security constraints]
+
+Please provide:
+- SQL schema creation statements
+- RLS policies for each table
+- Indexes for performance
+- Foreign key relationships
+- Migration strategy if updating existing schema
+```
+
+### 3. Debugging Templates
+
+#### Error Investigation
+```
+I'm getting this error in my NextJS App Router project:
+
+Error message:
+```
+[Paste exact error message]
+```
+
+Context:
+- What I was trying to do: [Specific action]
+- When it happens: [Specific conditions]
+- Environment: [Development/Production]
+
+Relevant code:
+```typescript
+[Paste relevant code snippet]
+```
+
+Project setup:
+- NextJS 15 with App Router
+- Supabase with @supabase/ssr
+- [Other relevant dependencies]
+
+What I've tried:
+- [Attempt 1]
+- [Attempt 2]
+
+Please help me:
+1. Understand what's causing this error
+2. Provide a solution that follows our project patterns
+3. Suggest how to prevent this in the future
+```
+
+#### Performance Issue
+```
+I'm experiencing performance issues with [SPECIFIC_COMPONENT/FEATURE].
+
+Symptoms:
+- [Specific performance problem]
+- [When it occurs]
+- [Impact on user experience]
+
+Current implementation:
+```typescript
+[Paste relevant code]
+```
+
+Metrics:
+- [Specific measurements if available]
+- [User feedback/observations]
+
+Project context:
+- NextJS 15 App Router
+- [Relevant dependencies]
+- [Scale/usage patterns]
+
+Please analyze:
+1. What's causing the performance issue?
+2. How can I optimize this following NextJS best practices?
+3. Are there architectural changes needed?
+4. How can I measure improvements?
+```
+
+### 4. Code Review Templates
+
+#### Code Review Request
+```
+Please review this [COMPONENT/FEATURE] implementation for my NextJS project.
+
+Code to review:
+```typescript
+[Paste code]
+```
+
+Specific concerns:
+- [Concern 1]
+- [Concern 2]
+
+Review criteria:
+- NextJS App Router best practices
+- Security (RLS, input validation)
+- TypeScript usage
+- Performance implications
+- Code organization
+
+Project context:
+- [Brief project description]
+- [Relevant architectural decisions]
+
+Please provide:
+1. Overall assessment
+2. Specific issues found
+3. Improvement suggestions
+4. Security considerations
+5. Performance optimizations
+```
+
+#### Security Review
+```
+Please conduct a security review of this implementation:
+
+```typescript
+[Paste code]
+```
+
+Security focus areas:
+- Authentication/authorization
+- Input validation
+- RLS implementation
+- Environment variable usage
+- Client/server boundary
+
+Threat model:
+- [Specific threats to consider]
+- [Sensitive data involved]
+
+Please analyze:
+1. Are there security vulnerabilities?
+2. Is RLS properly implemented?
+3. Are inputs properly validated?
+4. Are secrets properly handled?
+5. What additional security measures are needed?
+```
+
+### 5. Learning Templates
+
+#### Concept Explanation
+```
+I want to understand [CONCEPT] in the context of my NextJS App Router project.
+
+Current understanding:
+- [What I think I know]
+- [Areas of confusion]
+
+Specific questions:
+1. [Specific question 1]
+2. [Specific question 2]
+
+Project context:
+- NextJS 15 with App Router
+- Supabase backend
+- [Relevant current implementation]
+
+Please explain:
+- How [concept] works in NextJS App Router
+- Best practices for our setup
+- Common mistakes to avoid
+- Practical examples using our tech stack
+```
+
+#### Pattern Comparison
+```
+I want to compare different approaches for [SPECIFIC_TASK] in NextJS.
+
+Options I'm considering:
+1. [Approach 1]: [Brief description]
+2. [Approach 2]: [Brief description]
+3. [Approach 3]: [Brief description]
+
+Evaluation criteria:
+- Performance
+- Security
+- Maintainability
+- Developer experience
+- Compatibility with our stack
+
+Project constraints:
+- [Specific constraint 1]
+- [Specific constraint 2]
+
+Please compare these approaches:
+1. Pros and cons of each
+2. Which fits best with NextJS App Router
+3. Security implications
+4. Your recommendation and why
+```
+
+### 6. Refactoring Templates
+
+#### Component Refactoring
+```
+I want to refactor this component to better follow NextJS App Router patterns:
+
+Current implementation:
+```typescript
+[Paste current code]
+```
+
+Issues with current approach:
+- [Issue 1]
+- [Issue 2]
+
+Goals for refactoring:
+- [Goal 1]
+- [Goal 2]
+
+Constraints:
+- Must maintain existing functionality
+- Should improve [performance/security/maintainability]
+- Must work with existing parent components
+
+Please provide:
+1. Refactored implementation
+2. Explanation of changes
+3. Migration strategy
+4. Testing considerations
+```
+
+#### Architecture Refactoring
+```
+I want to refactor [FEATURE/MODULE] to improve [SPECIFIC_ASPECT].
+
+Current architecture:
+- [Current structure]
+- [Current data flow]
+- [Current component organization]
+
+Problems with current approach:
+- [Problem 1]
+- [Problem 2]
+
+Desired improvements:
+- [Improvement 1]
+- [Improvement 2]
+
+Please suggest:
+1. New architecture approach
+2. Migration strategy
+3. Breaking changes and how to handle them
+4. Testing strategy for the refactoring
+```
+
+## Template Usage Guidelines
+
+### 1. Customize for Your Context
+- Replace placeholder text with your specific details
+- Add relevant code snippets
+- Include your project's specific constraints
+
+### 2. Be Specific
+- Use exact error messages
+- Provide concrete examples
+- Include relevant metrics or observations
+
+### 3. Provide Sufficient Context
+- Include your tech stack details
+- Mention relevant architectural decisions
+- Reference related features or components
+
+### 4. Ask Clear Questions
+- Be specific about what you want to know
+- Prioritize your concerns
+- Ask for actionable advice
+
+## Advanced Prompt Techniques
+
+### Chain of Thought Prompting
+```
+Let's work through implementing [FEATURE] step by step:
+
+Step 1: First, let's design the data model
+- What tables do we need?
+- What are the relationships?
+- What RLS policies are required?
+
+Step 2: Then, let's plan the component structure
+- Which components should be Server Components?
+- Where do we need Client Components?
+- How will data flow between them?
+
+Step 3: Finally, let's implement the user interface
+- What's the user flow?
+- How do we handle loading and error states?
+- What validation is needed?
+
+Please work through each step with me.
+```
+
+### Role-Based Prompting
+```
+Act as a senior NextJS developer reviewing my implementation.
+
+Focus on:
+- NextJS 15 App Router best practices
+- Security considerations with Supabase
+- Performance optimization
+- Code maintainability
+
+[Your specific request and code]
+```
+
+### Constraint-Based Prompting
+```
+Given these constraints:
+- Must use Server Components where possible
+- Must implement proper RLS
+- Must handle all error cases
+- Must be accessible (WCAG 2.1)
+- Must work on mobile devices
+
+How would you implement [FEATURE]?
+```
+
+## Measuring Prompt Effectiveness
+
+### Good Responses Include:
+- Specific, actionable advice
+- Code that follows your project patterns
+- Security considerations addressed
+- Performance implications discussed
+- Clear explanations of decisions
+
+### Poor Responses Include:
+- Generic advice that could apply to any project
+- Code that doesn't match your architecture
+- Missing security considerations
+- No explanation of trade-offs
+- Incomplete implementations
+
+## Next Steps
+
+- [Effective Prompt Engineering](./effective-prompt-engineering.md) - Advanced prompting techniques
+- [AI-Assisted Debugging](./ai-assisted-debugging.md) - Debug with AI help
+- [Context Management Strategies](./context-management-strategies.md) - Maintain context effectively

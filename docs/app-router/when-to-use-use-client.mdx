@@ -1,0 +1,536 @@
+# When to Use 'use client'
+
+## What Problem Does This Solve?
+
+Knowing exactly when to add `'use client'` is crucial for App Router performance and functionality. Using it incorrectly leads to unnecessary JavaScript bundles and poor performance.
+
+## What Happens If You Get This Wrong?
+
+- **Performance degradation**: Unnecessary JavaScript sent to browser
+- **Broken functionality**: Missing `'use client'` when hooks are needed
+- **Hydration errors**: Server/client rendering mismatches
+- **Poor SEO**: Client-rendered content not available to crawlers
+
+## The Golden Rule
+
+**Start with Server Components (no `'use client'`), add `'use client'` only when you need:**
+
+1. **React hooks** (`useState`, `useEffect`, etc.)
+2. **Event handlers** (`onClick`, `onSubmit`, etc.)
+3. **Browser APIs** (`localStorage`, `navigator`, etc.)
+4. **Third-party libraries** that use browser features
+
+## Decision Tree
+
+```
+Do you need any of these?
+├─ React hooks (useState, useEffect, useContext, etc.)
+├─ Event handlers (onClick, onSubmit, onChange, etc.)
+├─ Browser APIs (localStorage, navigator, window, etc.)
+├─ Third-party libraries that use browser features
+│
+├─ YES → Add 'use client'
+└─ NO → Keep as Server Component (default)
+```
+
+## ✅ When You MUST Use 'use client'
+
+### 1. React Hooks
+
+```tsx
+// ✅ MUST use 'use client' for hooks
+'use client'
+
+import { useState, useEffect } from 'react'
+
+function Counter() {
+  const [count, setCount] = useState(0) // Hook requires 'use client'
+  
+  useEffect(() => {
+    document.title = `Count: ${count}` // Browser API also requires client
+  }, [count])
+  
+  return (
+    <div>
+      <p>Count: {count}</p>
+      <button onClick={() => setCount(count + 1)}>+</button>
+    </div>
+  )
+}
+```
+
+### 2. Event Handlers
+
+```tsx
+// ✅ MUST use 'use client' for event handlers
+'use client'
+
+function SearchBox() {
+  const [query, setQuery] = useState('')
+  
+  const handleSubmit = (e: React.FormEvent) => { // Event handler
+    e.preventDefault()
+    // Handle search
+  }
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <input 
+        value={query}
+        onChange={(e) => setQuery(e.target.value)} // Event handler
+        placeholder="Search..."
+      />
+      <button type="submit">Search</button>
+    </form>
+  )
+}
+```
+
+### 3. Browser APIs
+
+```tsx
+// ✅ MUST use 'use client' for browser APIs
+'use client'
+
+import { useEffect, useState } from 'react'
+
+function GeolocationComponent() {
+  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null)
+  
+  useEffect(() => {
+    // Browser API requires 'use client'
+    navigator.geolocation.getCurrentPosition((position) => {
+      setLocation({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      })
+    })
+  }, [])
+  
+  return (
+    <div>
+      {location ? (
+        <p>Location: {location.lat}, {location.lng}</p>
+      ) : (
+        <p>Getting location...</p>
+      )}
+    </div>
+  )
+}
+```
+
+### 4. Third-Party Libraries with Browser Dependencies
+
+```tsx
+// ✅ MUST use 'use client' for browser-dependent libraries
+'use client'
+
+import { useEffect, useRef } from 'react'
+import mapboxgl from 'mapbox-gl' // Browser-only library
+
+function MapComponent() {
+  const mapContainer = useRef<HTMLDivElement>(null)
+  
+  useEffect(() => {
+    if (!mapContainer.current) return
+    
+    // Browser-only library requires 'use client'
+    const map = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v11'
+    })
+    
+    return () => map.remove()
+  }, [])
+  
+  return <div ref={mapContainer} style={{ height: '400px' }} />
+}
+```
+
+## ❌ When You DON'T Need 'use client'
+
+### 1. Static Content
+
+```tsx
+// ❌ DON'T add 'use client' - this is static
+function AboutPage() {
+  return (
+    <div>
+      <h1>About Us</h1>
+      <p>We are a company that builds amazing products.</p>
+      <p>Founded in 2024, we have grown to serve millions of users.</p>
+    </div>
+  )
+}
+```
+
+### 2. Data Fetching (Server-Side)
+
+```tsx
+// ❌ DON'T add 'use client' - server-side data fetching
+async function UserProfile({ userId }: { userId: string }) {
+  const user = await fetchUser(userId) // Server-side fetch
+  
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+      <p>Joined: {new Date(user.createdAt).toLocaleDateString()}</p>
+    </div>
+  )
+}
+```
+
+### 3. Layout Components
+
+```tsx
+// ❌ DON'T add 'use client' - layouts are typically server components
+function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="dashboard-layout">
+      <aside className="sidebar">
+        <nav>
+          <a href="/dashboard">Dashboard</a>
+          <a href="/profile">Profile</a>
+          <a href="/settings">Settings</a>
+        </nav>
+      </aside>
+      <main className="content">
+        {children}
+      </main>
+    </div>
+  )
+}
+```
+
+### 4. Server-Side Computations
+
+```tsx
+// ❌ DON'T add 'use client' - server-side computation
+async function AnalyticsDashboard() {
+  // Complex server-side calculations
+  const stats = await calculateAnalytics()
+  const trends = await analyzeTrends()
+  const predictions = await generatePredictions()
+  
+  return (
+    <div>
+      <h1>Analytics Dashboard</h1>
+      <div>Total Users: {stats.totalUsers}</div>
+      <div>Growth Rate: {trends.growthRate}%</div>
+      <div>Predicted Revenue: ${predictions.revenue}</div>
+    </div>
+  )
+}
+```
+
+## Common Patterns & Examples
+
+### Pattern 1: Server Component + Client Island
+
+```tsx
+// Server Component (no 'use client')
+async function BlogPost({ postId }: { postId: string }) {
+  const post = await fetchPost(postId) // Server-side data fetching
+  
+  return (
+    <article>
+      <h1>{post.title}</h1>
+      <p>By {post.author} on {new Date(post.publishedAt).toLocaleDateString()}</p>
+      
+      <div>{post.content}</div>
+      
+      {/* Client Component for interactivity */}
+      <LikeButton postId={postId} initialLikes={post.likes} />
+      <CommentSection postId={postId} />
+    </article>
+  )
+}
+
+// Client Component (with 'use client')
+'use client'
+
+function LikeButton({ postId, initialLikes }: { postId: string, initialLikes: number }) {
+  const [likes, setLikes] = useState(initialLikes)
+  const [isLiked, setIsLiked] = useState(false)
+  
+  const handleLike = async () => {
+    // Interactive functionality requires 'use client'
+    setIsLiked(!isLiked)
+    setLikes(isLiked ? likes - 1 : likes + 1)
+    
+    await updateLikes(postId, !isLiked)
+  }
+  
+  return (
+    <button onClick={handleLike} className={isLiked ? 'liked' : ''}>
+      ❤️ {likes}
+    </button>
+  )
+}
+```
+
+### Pattern 2: Form with Server Action
+
+```tsx
+// Server Component with Server Action (no 'use client' needed)
+import { redirect } from 'next/navigation'
+
+async function createPost(formData: FormData) {
+  'use server'
+  
+  const title = formData.get('title') as string
+  const content = formData.get('content') as string
+  
+  await savePost({ title, content })
+  redirect('/posts')
+}
+
+function CreatePostForm() {
+  return (
+    <form action={createPost}>
+      <input name="title" placeholder="Post title" required />
+      <textarea name="content" placeholder="Post content" required />
+      <button type="submit">Create Post</button>
+    </form>
+  )
+}
+```
+
+### Pattern 3: Mixed Interactive Form
+
+```tsx
+// Server Component wrapper
+async function EditPostPage({ postId }: { postId: string }) {
+  const post = await fetchPost(postId) // Server-side data fetching
+  
+  return (
+    <div>
+      <h1>Edit Post</h1>
+      <EditPostForm post={post} /> {/* Pass data to client component */}
+    </div>
+  )
+}
+
+// Client Component for complex form interactions
+'use client'
+
+function EditPostForm({ post }: { post: Post }) {
+  const [title, setTitle] = useState(post.title)
+  const [content, setContent] = useState(post.content)
+  const [isDirty, setIsDirty] = useState(false)
+  
+  // Complex form state requires 'use client'
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(e.target.value)
+    setIsDirty(true)
+  }
+  
+  const handleSave = async () => {
+    await updatePost(post.id, { title, content })
+    setIsDirty(false)
+  }
+  
+  return (
+    <div>
+      <input value={title} onChange={handleTitleChange} />
+      <textarea value={content} onChange={(e) => {
+        setContent(e.target.value)
+        setIsDirty(true)
+      }} />
+      
+      <button onClick={handleSave} disabled={!isDirty}>
+        Save Changes
+      </button>
+      
+      {isDirty && <p>You have unsaved changes</p>}
+    </div>
+  )
+}
+```
+
+## Advanced Scenarios
+
+### Conditional Client Components
+
+```tsx
+// Server Component that conditionally renders client components
+async function Dashboard({ userId }: { userId: string }) {
+  const user = await fetchUser(userId)
+  const hasPermissions = await checkPermissions(userId, 'admin')
+  
+  return (
+    <div>
+      <h1>Dashboard</h1>
+      
+      {/* Always server-rendered */}
+      <UserStats user={user} />
+      
+      {/* Conditionally add interactivity */}
+      {hasPermissions ? (
+        <AdminControls userId={userId} /> // Client component
+      ) : (
+        <ReadOnlyView data={user.data} /> // Server component
+      )}
+    </div>
+  )
+}
+```
+
+### Context Providers
+
+```tsx
+// Client Component for context (must use 'use client')
+'use client'
+
+import { createContext, useContext, useState } from 'react'
+
+const ThemeContext = createContext<{
+  theme: string
+  setTheme: (theme: string) => void
+}>({
+  theme: 'light',
+  setTheme: () => {}
+})
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState('light')
+  
+  return (
+    <ThemeContext.Provider value={{ theme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  )
+}
+
+export const useTheme = () => useContext(ThemeContext)
+
+// Usage in layout (Server Component)
+function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html>
+      <body>
+        <ThemeProvider> {/* Client component wraps server components */}
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+## Performance Implications
+
+### Bundle Size Impact
+
+```tsx
+// Server Component: 0 KB JavaScript to browser
+function ServerStats({ data }: { data: any }) {
+  return <div>Users: {data.userCount}</div>
+}
+
+// Client Component: Adds to JavaScript bundle
+'use client'
+function ClientStats({ data }: { data: any }) {
+  const [visible, setVisible] = useState(true)
+  
+  return visible ? <div>Users: {data.userCount}</div> : null
+}
+```
+
+### Measuring Impact
+
+```bash
+# Check bundle size impact
+npm run build
+
+# Look for changes in:
+# - First Load JS shared by all
+# - Route-specific bundles
+```
+
+## Debugging 'use client' Issues
+
+### Common Error Messages
+
+#### "You're importing a component that needs useState"
+
+```tsx
+// ❌ This will cause an error
+import { useState } from 'react' // Missing 'use client'
+
+function Component() {
+  const [state, setState] = useState(0) // Error!
+  return <div>{state}</div>
+}
+
+// ✅ Fix by adding 'use client'
+'use client'
+
+import { useState } from 'react'
+
+function Component() {
+  const [state, setState] = useState(0) // Works!
+  return <div>{state}</div>
+}
+```
+
+#### "Cannot read properties of undefined (reading 'localStorage')"
+
+```tsx
+// ❌ Browser API in Server Component
+function Component() {
+  const data = localStorage.getItem('data') // Error! No localStorage on server
+  return <div>{data}</div>
+}
+
+// ✅ Fix with 'use client' and proper handling
+'use client'
+
+import { useEffect, useState } from 'react'
+
+function Component() {
+  const [data, setData] = useState('')
+  
+  useEffect(() => {
+    const stored = localStorage.getItem('data')
+    setData(stored || '')
+  }, [])
+  
+  return <div>{data}</div>
+}
+```
+
+## Best Practices Checklist
+
+### ✅ DO
+
+- Start with Server Components by default
+- Add `'use client'` only when necessary
+- Keep Client Components small and focused
+- Pass data from Server to Client Components via props
+- Use Server Actions for form submissions when possible
+
+### ❌ DON'T
+
+- Add `'use client'` to every component
+- Use Client Components for static content
+- Fetch initial data in Client Components with useEffect
+- Put `'use client'` in layout components unless necessary
+- Mix server-side and client-side data fetching patterns
+
+## Migration Strategy
+
+When converting from Pages Router:
+
+1. **Start with Server Components** for all pages
+2. **Identify interactive elements** that need `'use client'`
+3. **Extract Client Components** for interactive parts only
+4. **Use composition** to combine Server and Client Components
+5. **Test performance** and bundle size impact
+
+## Next Steps
+
+- [Server vs Client Components](./server-vs-client-components.md) - Understand the fundamental differences
+- [Data Fetching Patterns](./data-fetching-patterns.md) - Learn proper data fetching approaches
+- [Common App Router Mistakes](./common-app-router-mistakes.md) - Avoid these pitfalls

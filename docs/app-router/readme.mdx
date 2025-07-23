@@ -1,0 +1,74 @@
+# 02 - Next.js App Router Mastery
+
+**Problem this solves:** The App Router is fundamentally different from Pages Router, causing massive confusion about when to use server vs client components.
+
+**What happens if you get this wrong:** Poor performance, hydration errors, data fetching in the wrong places, and frustrated developers.
+
+## 🧠 Mental Model Shift
+
+The App Router isn't just "new routing" - it's a complete paradigm shift. This section helps you think in the new model.
+
+## Files in This Section
+
+### 🔥 High-Priority (Start Here)
+- `server-vs-client-components.md` - **THE BIGGEST CONFUSION POINT** - Clear mental model
+- `when-to-use-use-client.md` - Clear guidelines & examples with decision tree
+- `common-app-router-mistakes.md` - Top 10 mistakes & how to fix them
+
+### Core App Router Files
+- `README.md` - App Router philosophy & mental model (you are here)
+- `data-fetching-patterns.md` - Where & how to fetch data properly
+- `routing-and-layouts.md` - File-based routing explained with examples
+- `server-actions-explained.md` - Forms, mutations, when to use vs route handlers
+- `caching-and-revalidation.md` - Next.js caching behavior demystified
+- `migration-from-pages-router.md` - If coming from Pages Router
+
+## Learning Path
+
+1. **Mental Model**: `server-vs-client-components.md` - Understand the fundamental shift
+2. **Decision Making**: `when-to-use-use-client.md` - Know when to break the rules
+3. **Data Patterns**: `data-fetching-patterns.md` - Fetch data the right way
+4. **Routing Mastery**: `routing-and-layouts.md` - Master file-based routing
+5. **Forms & Actions**: `server-actions-explained.md` - Handle mutations properly
+6. **Performance**: `caching-and-revalidation.md` - Understand Next.js caching
+7. **Avoid Pitfalls**: `common-app-router-mistakes.md` - Learn from others' mistakes
+
+## Key Mental Models
+
+### Server-First Thinking
+- **Default**: Everything is a server component
+- **Exception**: Only use client when you need interactivity
+- **Rule**: Push client boundaries as far down as possible
+
+### Data Fetching Philosophy
+- **Server Components**: Fetch data where you need it
+- **No useEffect**: For initial data loading
+- **Streaming**: Show UI progressively as data loads
+
+### Caching Strategy
+- **Static by Default**: Pages are cached unless they can't be
+- **Dynamic When Needed**: Opt into dynamic rendering explicitly
+- **Revalidation**: Control when cached data updates
+
+## Quick Decision Tree
+
+### When to Use Server Components (Default)
+- Fetching data
+- Accessing backend resources
+- Keeping sensitive information on server
+- Using large dependencies
+
+### When to Use Client Components
+- Event listeners (onClick, onChange, etc.)
+- State and lifecycle effects (useState, useEffect, etc.)
+- Browser-only APIs
+- Custom hooks that depend on state/effects
+
+## Success Criteria
+
+After completing this section, you should:
+- Have a clear mental model of server vs client components
+- Know exactly when to use `"use client"`
+- Understand Next.js caching and how to control it
+- Be able to build performant, well-architected App Router applications
+- Avoid the common mistakes that trip up most developers

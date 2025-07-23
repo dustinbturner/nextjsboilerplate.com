@@ -1,0 +1,168 @@
+---
+title: "Building Secure Next.js Applications"
+description: "Essential security practices for modern Next.js applications with authentication, data protection, and best practices"
+date: "2024-01-20"
+author: "Security Team"
+tags: ["nextjs", "security", "authentication", "best-practices"]
+---
+
+# Building Secure Next.js Applications
+
+Security should be at the forefront of every web application development process. In this guide, we'll explore essential security practices for Next.js applications, covering authentication, data protection, and common vulnerabilities.
+
+## Authentication & Authorization
+
+### Supabase Auth Integration
+
+Our boilerplate uses Supabase for authentication, providing:
+
+- **Secure JWT tokens** with automatic refresh
+- **Row Level Security (RLS)** for database access control
+- **Multiple auth providers** (email, OAuth, etc.)
+- **Server-side session management**
+
+```typescript
+// Server-side auth check
+const supabase = createClient()
+const { data: { user } } = await supabase.auth.getUser()
+
+if (!user) {
+  redirect('/login')
+}
+```
+
+### Middleware Protection
+
+Our middleware automatically protects routes:
+
+```typescript
+export async function middleware(request: NextRequest) {
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user && !request.nextUrl.pathname.startsWith('/login')) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+}
+```
+
+## Data Protection
+
+### Environment Variables
+
+Always use environment variables for sensitive data:
+
+```bash
+# .env.local
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+```
+
+### Input Validation
+
+Validate all user inputs on both client and server:
+
+```typescript
+import { z } from 'zod'
+
+const userSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2).max(50),
+})
+
+export async function createUser(formData: FormData) {
+  const result = userSchema.safeParse({
+    email: formData.get('email'),
+    name: formData.get('name'),
+  })
+  
+  if (!result.success) {
+    throw new Error('Invalid input')
+  }
+}
+```
+
+## Common Security Vulnerabilities
+
+### Cross-Site Scripting (XSS)
+
+React provides built-in XSS protection, but be careful with:
+
+- `dangerouslySetInnerHTML`
+- Dynamic imports
+- Third-party scripts
+
+### SQL Injection
+
+Using Supabase with RLS policies prevents most SQL injection attacks:
+
+```sql
+-- Example RLS policy
+CREATE POLICY "Users can only see their own data" ON profiles
+  FOR SELECT USING (auth.uid() = user_id);
+```
+
+### CSRF Protection
+
+Next.js Server Actions include CSRF protection by default, but always validate origins:
+
+```typescript
+export async function updateProfile(formData: FormData) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+  
+  // Safe to proceed with authenticated user
+}
+```
+
+## Security Headers
+
+Configure security headers in `next.config.js`:
+
+```javascript
+const nextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+## Best Practices Checklist
+
+- ✅ Use HTTPS in production
+- ✅ Implement proper authentication
+- ✅ Validate all inputs
+- ✅ Use environment variables for secrets
+- ✅ Enable security headers
+- ✅ Keep dependencies updated
+- ✅ Implement proper error handling
+- ✅ Use Content Security Policy (CSP)
+- ✅ Regular security audits
+
+## Conclusion
+
+Security is an ongoing process, not a one-time setup. Regular audits, dependency updates, and staying informed about new vulnerabilities are essential for maintaining a secure application.
+
+Remember: **Security by design** is always better than **security as an afterthought**.

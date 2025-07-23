@@ -1,0 +1,86 @@
+# 04 - Database & Drizzle ORM
+
+**Problem this solves:** Database design and ORM usage patterns that scale and perform well while maintaining security.
+
+**What happens if you get this wrong:** Poor performance, security vulnerabilities, migration nightmares, and technical debt that's expensive to fix.
+
+## 🗄️ Database Philosophy
+
+Your database is the foundation of your application. This section teaches you to design schemas that are secure, performant, and maintainable from day one.
+
+## Files in This Section
+
+### Core Database Files
+- `README.md` - Why Drizzle over Prisma & database philosophy (you are here)
+- `schema-design-principles.md` - Good database design with security in mind
+- `migrations-and-schema-changes.md` - Managing schema evolution safely
+- `writing-good-queries.md` - Query patterns & performance optimization
+- `relationships-and-joins.md` - Handling foreign keys & relations properly
+- `indexing-and-performance.md` - Database optimization strategies
+- `seed-data-and-testing.md` - Development data setup and testing patterns
+
+## Learning Path
+
+1. **Design Foundation**: `schema-design-principles.md` - Learn to design secure, scalable schemas
+2. **ORM Mastery**: `writing-good-queries.md` - Write efficient Drizzle queries
+3. **Relationships**: `relationships-and-joins.md` - Handle complex data relationships
+4. **Evolution**: `migrations-and-schema-changes.md` - Manage schema changes safely
+5. **Performance**: `indexing-and-performance.md` - Optimize for speed and scale
+6. **Development**: `seed-data-and-testing.md` - Set up development workflows
+
+## Why Drizzle Over Prisma?
+
+### Drizzle Advantages
+- **Type Safety**: Better TypeScript integration
+- **Performance**: Closer to SQL, less overhead
+- **Flexibility**: More control over queries
+- **Bundle Size**: Smaller runtime footprint
+- **SQL-First**: Easier to optimize and debug
+
+### When You Might Choose Prisma
+- Team prefers more abstraction
+- Heavy use of complex relations
+- Need advanced introspection features
+
+## Key Database Principles
+
+### Security-First Design
+- **RLS by Default**: Every table gets Row Level Security
+- **Least Privilege**: Users only access their own data
+- **Input Validation**: Validate at both application and database level
+
+### Performance Patterns
+- **Index Intentionally**: Add indexes based on query patterns
+- **Batch Operations**: Minimize database round trips
+- **Connection Pooling**: Manage database connections efficiently
+
+### Schema Evolution
+- **Backward Compatible**: Design migrations that don't break existing code
+- **Rollback Strategy**: Always have a way to undo changes
+- **Test Migrations**: Validate schema changes before production
+
+## Quick Architecture Overview
+
+```
+┌─ Application Layer ─┐
+│ Drizzle Queries     │
+│ Type-safe schemas   │
+└─────────┬───────────┘
+          │
+┌─────────▼───────────┐
+│ Supabase Postgres   │
+│ - RLS Policies      │
+│ - Indexes           │
+│ - Triggers          │
+│ - Functions         │
+└─────────────────────┘
+```
+
+## Success Criteria
+
+After completing this section, you should:
+- Understand how to design secure, scalable database schemas
+- Be proficient with Drizzle ORM patterns and best practices
+- Know how to write performant queries and optimize database performance
+- Understand migration strategies and schema evolution
+- Be able to set up effective development and testing workflows

@@ -1,0 +1,309 @@
+# Row Level Security Explained
+
+## What Problem Does This Solve?
+
+Row Level Security (RLS) is the #1 most important security feature in Supabase. It ensures users can only access data they're authorized to see, preventing data breaches and unauthorized access.
+
+## What Happens If You Get This Wrong?
+
+- **Data breaches**: Users see other users' private data
+- **Privacy violations**: Personal information exposed
+- **Compliance issues**: GDPR, HIPAA violations
+- **Business damage**: Loss of trust and legal liability
+
+## The Mental Model
+
+Think of RLS as a bouncer at a club. Every time someone tries to access a table row, PostgreSQL asks: "Is this person allowed to see/modify this specific row?"
+
+```sql
+-- Without RLS: Anyone can see everything
+SELECT * FROM profiles; -- Returns ALL profiles
+
+-- With RLS: Users only see their own data
+SELECT * FROM profiles; -- Returns only YOUR profile
+```
+
+## RLS vs Application-Level Security
+
+### ❌ Application-Level Security (Fragile)
+```typescript
+// This can be bypassed!
+const { data } = await supabase
+  .from('profiles')
+  .select('*')
+  .eq('user_id', currentUser.id) // Developer must remember this EVERY time
+```
+
+### ✅ Row Level Security (Bulletproof)
+```sql
+-- Set once in the database, enforced everywhere
+CREATE POLICY "Users can only see own profile" 
+  ON profiles FOR SELECT 
+  USING (auth.uid() = user_id);
+```
+
+```typescript
+// This automatically only returns the user's data
+const { data } = await supabase
+  .from('profiles')
+  .select('*') // No .eq() needed - RLS handles it!
+```
+
+## Setting Up RLS: Step by Step
+
+### Step 1: Enable RLS on Your Table
+
+```sql
+-- Enable RLS (this blocks ALL access by default)
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+```
+
+⚠️ **Important**: Once you enable RLS, NO ONE can access the table until you create policies!
+
+### Step 2: Create Policies
+
+```sql
+-- Allow users to read their own profile
+CREATE POLICY "Users can view own profile" 
+  ON profiles FOR SELECT 
+  USING (auth.uid() = user_id);
+
+-- Allow users to update their own profile
+CREATE POLICY "Users can update own profile" 
+  ON profiles FOR UPDATE 
+  USING (auth.uid() = user_id);
+
+-- Allow users to insert their own profile
+CREATE POLICY "Users can insert own profile" 
+  ON profiles FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+-- Allow users to delete their own profile
+CREATE POLICY "Users can delete own profile" 
+  ON profiles FOR DELETE 
+  USING (auth.uid() = user_id);
+```
+
+### Step 3: Test Your Policies
+
+```sql
+-- Test as different users in Supabase SQL editor
+SELECT auth.uid(); -- Shows current user ID
+SELECT * FROM profiles; -- Should only show current user's data
+```
+
+## Common RLS Patterns
+
+### 1. User-Owned Data
+```sql
+-- Pattern: Users own their data
+CREATE POLICY "Users manage own data" 
+  ON user_posts 
+  FOR ALL 
+  USING (auth.uid() = user_id);
+```
+
+### 2. Public Read, Owner Write
+```sql
+-- Pattern: Anyone can read, only owner can modify
+CREATE POLICY "Public read access" 
+  ON blog_posts 
+  FOR SELECT 
+  USING (published = true);
+
+CREATE POLICY "Owner full access" 
+  ON blog_posts 
+  FOR ALL 
+  USING (auth.uid() = author_id);
+```
+
+### 3. Role-Based Access
+```sql
+-- Pattern: Different access based on user role
+CREATE POLICY "Admins see everything" 
+  ON sensitive_data 
+  FOR ALL 
+  USING (
+    EXISTS (
+      SELECT 1 FROM user_roles 
+      WHERE user_id = auth.uid() 
+      AND role = 'admin'
+    )
+  );
+```
+
+### 4. Team/Organization Access
+```sql
+-- Pattern: Users in same organization can see each other's data
+CREATE POLICY "Team members access" 
+  ON team_documents 
+  FOR SELECT 
+  USING (
+    organization_id IN (
+      SELECT organization_id 
+      FROM user_organizations 
+      WHERE user_id = auth.uid()
+    )
+  );
+```
+
+## Advanced RLS Concepts
+
+### Using Functions in Policies
+
+```sql
+-- Create a helper function
+CREATE OR REPLACE FUNCTION is_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM user_roles 
+    WHERE user_id = auth.uid() 
+    AND role = 'admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Use it in policies
+CREATE POLICY "Admin access" 
+  ON admin_data 
+  FOR ALL 
+  USING (is_admin());
+```
+
+### Time-Based Policies
+
+```sql
+-- Only allow access during business hours
+CREATE POLICY "Business hours only" 
+  ON time_sensitive_data 
+  FOR SELECT 
+  USING (
+    EXTRACT(hour FROM NOW()) BETWEEN 9 AND 17
+    AND EXTRACT(dow FROM NOW()) BETWEEN 1 AND 5
+  );
+```
+
+## Common RLS Mistakes
+
+### ❌ Mistake 1: Forgetting to Enable RLS
+```sql
+-- Table created but RLS not enabled
+CREATE TABLE posts (id UUID, content TEXT, user_id UUID);
+-- Anyone can access everything!
+```
+
+### ✅ Fix: Always Enable RLS
+```sql
+CREATE TABLE posts (id UUID, content TEXT, user_id UUID);
+ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+```
+
+### ❌ Mistake 2: Using Wrong Column Name
+```sql
+-- Policy uses 'user_id' but table has 'owner_id'
+CREATE POLICY "Owner access" 
+  ON documents 
+  FOR ALL 
+  USING (auth.uid() = user_id); -- Wrong column!
+```
+
+### ✅ Fix: Match Your Schema
+```sql
+CREATE POLICY "Owner access" 
+  ON documents 
+  FOR ALL 
+  USING (auth.uid() = owner_id); -- Correct column
+```
+
+### ❌ Mistake 3: Overly Permissive Policies
+```sql
+-- This allows any authenticated user to see everything
+CREATE POLICY "Authenticated users" 
+  ON sensitive_data 
+  FOR SELECT 
+  USING (auth.uid() IS NOT NULL);
+```
+
+### ✅ Fix: Be Specific
+```sql
+CREATE POLICY "Owner only" 
+  ON sensitive_data 
+  FOR SELECT 
+  USING (auth.uid() = owner_id);
+```
+
+## Testing RLS Policies
+
+### 1. Use the RLS Debugger
+Supabase provides a visual RLS debugger in the dashboard:
+- Go to Database → Policies
+- Click "Test policy" on any policy
+- Try different user scenarios
+
+### 2. Test with Different Users
+```sql
+-- Switch between users in SQL editor
+SELECT auth.uid(); -- Check current user
+-- Run queries to see what data they can access
+```
+
+### 3. Test Edge Cases
+- What happens with NULL values?
+- What about users with no roles?
+- Test with deleted/inactive users
+
+## Performance Considerations
+
+### ✅ DO: Use Indexes on Policy Columns
+```sql
+-- If your policy filters on user_id, index it
+CREATE INDEX idx_posts_user_id ON posts(user_id);
+```
+
+### ✅ DO: Keep Policies Simple
+```sql
+-- Simple and fast
+USING (auth.uid() = user_id)
+
+-- Complex and slow
+USING (
+  auth.uid() IN (
+    SELECT user_id FROM complex_view 
+    WHERE some_condition = true
+  )
+)
+```
+
+### ❌ DON'T: Use Functions That Don't Scale
+```sql
+-- This will be slow with many users
+USING (
+  auth.uid() IN (
+    SELECT unnest(allowed_users) FROM permissions
+  )
+)
+```
+
+## Debugging RLS Issues
+
+### "No rows returned" when you expect data
+1. Check if RLS is enabled: `SELECT * FROM pg_tables WHERE tablename = 'your_table';`
+2. Check if policies exist: `SELECT * FROM pg_policies WHERE tablename = 'your_table';`
+3. Verify `auth.uid()` returns expected value: `SELECT auth.uid();`
+
+### "Permission denied" errors
+1. Check if you have policies for the operation (SELECT, INSERT, UPDATE, DELETE)
+2. Verify the policy condition matches your data
+3. Test the policy condition in isolation
+
+### Performance issues
+1. Add indexes on columns used in policies
+2. Simplify complex policy conditions
+3. Use `EXPLAIN ANALYZE` to see query performance
+
+## Next Steps
+
+- [Row Level Security Step by Step](./row-level-security-step-by-step.md) - Hands-on RLS implementation
+- [Common Security Mistakes](./common-security-mistakes.md) - Avoid these pitfalls
+- [Database Schema Design](../04%20-%20Database%20&%20Drizzle%20ORM/schema-design-principles.md) - Design with RLS in mind

@@ -1,0 +1,117 @@
+# Environment Variables Explained
+
+## What Problem Does This Solve?
+
+Environment variables are the foundation of secure application development. Without proper environment variable management, you risk exposing sensitive data like API keys, database credentials, and secrets to the public.
+
+## What Happens If You Get This Wrong?
+
+- **Security breaches**: API keys exposed in version control
+- **Production incidents**: Wrong database connections
+- **Development friction**: Team members can't run the project locally
+
+## Environment Variables in Next.js
+
+### The `.env` File Hierarchy
+
+Next.js loads environment variables in this order (later files override earlier ones):
+
+1. `.env.local` (always ignored by git)
+2. `.env.development` / `.env.production` / `.env.test`
+3. `.env`
+
+### Public vs Private Variables
+
+```bash
+# ❌ WRONG - This exposes your secret key to the browser
+NEXT_PUBLIC_SUPABASE_SECRET_KEY=your-secret-key
+
+# ✅ CORRECT - Public variables for browser access
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# ✅ CORRECT - Private variables (server-side only)
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+DATABASE_URL=postgresql://...
+```
+
+## Required Environment Variables
+
+### For Supabase Integration
+
+```bash
+# Required for client-side Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Required for server-side operations (optional but recommended)
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+### For Development
+
+```bash
+# Database connection (if using direct DB access)
+DATABASE_URL=postgresql://postgres:password@localhost:54322/postgres
+
+# Optional: For enhanced development experience
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+## Security Best Practices
+
+### ✅ DO
+
+- Use `.env.local` for sensitive local development variables
+- Add `.env.local` to your `.gitignore`
+- Use different values for development, staging, and production
+- Validate environment variables at startup
+- Use the `NEXT_PUBLIC_` prefix only when necessary
+
+### ❌ DON'T
+
+- Commit `.env.local` or any file with real secrets
+- Use `NEXT_PUBLIC_` for sensitive data
+- Hardcode environment-specific values in your code
+- Share environment files in chat or email
+
+## Environment Variable Validation
+
+Create a validation schema to catch missing variables early:
+
+```typescript
+// src/lib/env.ts
+import { z } from 'zod'
+
+const envSchema = z.object({
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  DATABASE_URL: z.string().url().optional(),
+})
+
+export const env = envSchema.parse(process.env)
+```
+
+## Common Issues & Troubleshooting
+
+### "Environment variable not found"
+
+1. Check the variable name (case-sensitive)
+2. Restart your development server after adding new variables
+3. Ensure the variable is in the correct `.env` file
+
+### "Variable undefined in browser"
+
+- Client-side variables must have the `NEXT_PUBLIC_` prefix
+- Server-side variables are not available in browser code
+
+### "Different values in production"
+
+- Set environment variables in your deployment platform (Vercel, Netlify, etc.)
+- Don't rely on `.env` files in production
+
+## Next Steps
+
+- [How to Connect Supabase](./how-to-connect-supabase.md) - Set up your Supabase environment variables
+- [Troubleshooting Setup](./troubleshooting-setup.md) - Fix common environment variable issues

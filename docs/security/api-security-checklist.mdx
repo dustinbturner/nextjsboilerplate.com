@@ -1,0 +1,605 @@
+# API Security Checklist
+
+## What Problem Does This Solve?
+
+APIs are the backbone of modern web applications and often the primary attack vector for malicious actors. A comprehensive security checklist ensures your APIs are protected against common vulnerabilities.
+
+## What Happens If You Get This Wrong?
+
+- **Data breaches** through unprotected endpoints
+- **Injection attacks** via unsanitized inputs
+- **Rate limiting bypass** leading to DoS attacks
+- **Authentication bypass** allowing unauthorized access
+- **Compliance violations** and legal liability
+
+## Pre-Deployment Security Checklist
+
+### ✅ Authentication & Authorization
+
+#### 1. Authentication Implementation
+- [ ] **JWT tokens properly validated** on every protected route
+- [ ] **Token expiration** implemented and enforced
+- [ ] **Refresh token rotation** for long-lived sessions
+- [ ] **Multi-factor authentication** for sensitive operations
+- [ ] **Session invalidation** on logout
+
+```typescript
+// ✅ CORRECT - Proper auth validation
+import { createClient } from '@/lib/supabase/server'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function GET(request: NextRequest) {
+  const supabase = await createClient()
+  
+  // Validate authentication
+  const { data: { user }, error } = await supabase.auth.getUser()
+  
+  if (error || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  
+  // Proceed with authenticated request
+  return NextResponse.json({ data: 'Protected data' })
+}
+```
+
+#### 2. Authorization Checks
+- [ ] **Role-based access control** (RBAC) implemented
+- [ ] **Resource-level permissions** verified
+- [ ] **Principle of least privilege** applied
+- [ ] **Authorization checks** on every endpoint
+- [ ] **Admin endpoints** properly protected
+
+```typescript
+// ✅ CORRECT - Authorization with RLS
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  
+  // RLS automatically ensures user can only delete their own posts
+  const { error } = await supabase
+    .from('posts')
+    .delete()
+    .eq('id', params.id)
+  
+  if (error) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  
+  return NextResponse.json({ success: true })
+}
+```
+
+### ✅ Input Validation & Sanitization
+
+#### 3. Request Validation
+- [ ] **All inputs validated** with schema validation (Zod)
+- [ ] **SQL injection prevention** through parameterized queries
+- [ ] **XSS prevention** through input sanitization
+- [ ] **File upload validation** (type, size, content)
+- [ ] **Request size limits** enforced
+
+```typescript
+// ✅ CORRECT - Input validation with Zod
+import { z } from 'zod'
+
+const createPostSchema = z.object({
+  title: z.string().min(1).max(200),
+  content: z.string().min(1).max(10000),
+  tags: z.array(z.string()).max(10).optional(),
+})
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    
+    // Validate input
+    const validatedData = createPostSchema.parse(body)
+    
+    // Process validated data
+    const result = await createPost(validatedData)
+    
+    return NextResponse.json(result)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid input', details: error.errors },
+        { status: 400 }
+      )
+    }
+    
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+```
+
+#### 4. SQL Injection Prevention
+- [ ] **Parameterized queries** used exclusively
+- [ ] **ORM/Query builder** used (Drizzle)
+- [ ] **Raw SQL avoided** or properly escaped
+- [ ] **Dynamic query building** secured
+- [ ] **Database permissions** minimized
+
+```typescript
+// ✅ CORRECT - Parameterized queries with Drizzle
+import { eq, and } from 'drizzle-orm'
+import { db } from '@/lib/db'
+import { posts } from '@/lib/db/schema'
+
+export async function getUserPosts(userId: string, status: string) {
+  // Parameterized query - safe from SQL injection
+  return await db
+    .select()
+    .from(posts)
+    .where(
+      and(
+        eq(posts.userId, userId),
+        eq(posts.status, status)
+      )
+    )
+}
+
+// ❌ WRONG - Vulnerable to SQL injection
+export async function getUserPostsUnsafe(userId: string, status: string) {
+  // Never do this!
+  return await db.execute(
+    `SELECT * FROM posts WHERE user_id = '${userId}' AND status = '${status}'`
+  )
+}
+```
+
+### ✅ Rate Limiting & DoS Protection
+
+#### 5. Rate Limiting
+- [ ] **Global rate limits** implemented
+- [ ] **Per-endpoint rate limits** configured
+- [ ] **Per-user rate limits** enforced
+- [ ] **Burst protection** enabled
+- [ ] **Rate limit headers** included in responses
+
+```typescript
+// ✅ CORRECT - Rate limiting implementation
+import { Ratelimit } from '@upstash/ratelimit'
+import { Redis } from '@upstash/redis'
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(10, '1 m'), // 10 requests per minute
+})
+
+export async function POST(request: NextRequest) {
+  const ip = request.ip ?? '127.0.0.1'
+  
+  const { success, limit, reset, remaining } = await ratelimit.limit(ip)
+  
+  if (!success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded' },
+      { 
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': limit.toString(),
+          'X-RateLimit-Remaining': remaining.toString(),
+          'X-RateLimit-Reset': new Date(reset).toISOString(),
+        }
+      }
+    )
+  }
+  
+  // Process request
+  return NextResponse.json({ success: true })
+}
+```
+
+#### 6. Request Size Limits
+- [ ] **JSON payload limits** enforced
+- [ ] **File upload limits** configured
+- [ ] **Query parameter limits** set
+- [ ] **Header size limits** enforced
+- [ ] **Timeout limits** configured
+
+```typescript
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  experimental: {
+    // Limit request body size
+    serverComponentsExternalPackages: [],
+  },
+  // Configure body size limits
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Content-Length',
+            value: '1048576', // 1MB limit
+          },
+        ],
+      },
+    ]
+  },
+}
+```
+
+### ✅ Error Handling & Information Disclosure
+
+#### 7. Secure Error Handling
+- [ ] **Generic error messages** for production
+- [ ] **Detailed logging** for debugging (server-side only)
+- [ ] **Stack traces hidden** from clients
+- [ ] **Database errors sanitized**
+- [ ] **Error codes standardized**
+
+```typescript
+// ✅ CORRECT - Secure error handling
+export async function GET(request: NextRequest) {
+  try {
+    const data = await fetchSensitiveData()
+    return NextResponse.json(data)
+  } catch (error) {
+    // Log detailed error server-side
+    console.error('Database error:', error)
+    
+    // Return generic error to client
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// ❌ WRONG - Exposes sensitive information
+export async function GET(request: NextRequest) {
+  try {
+    const data = await fetchSensitiveData()
+    return NextResponse.json(data)
+  } catch (error) {
+    // Never expose internal errors to clients
+    return NextResponse.json(
+      { error: error.message }, // Could expose database structure!
+      { status: 500 }
+    )
+  }
+}
+```
+
+#### 8. Information Disclosure Prevention
+- [ ] **Server information hidden** (no X-Powered-By headers)
+- [ ] **Version information removed** from responses
+- [ ] **Directory listing disabled**
+- [ ] **Debug information removed** from production
+- [ ] **Sensitive data filtered** from responses
+
+### ✅ HTTPS & Transport Security
+
+#### 9. Transport Layer Security
+- [ ] **HTTPS enforced** for all endpoints
+- [ ] **HSTS headers** configured
+- [ ] **Secure cookies** (httpOnly, secure, sameSite)
+- [ ] **TLS version** minimum enforced
+- [ ] **Certificate validation** enabled
+
+```typescript
+// middleware.ts - Enforce HTTPS
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(request: NextRequest) {
+  // Enforce HTTPS in production
+  if (
+    process.env.NODE_ENV === 'production' &&
+    request.headers.get('x-forwarded-proto') !== 'https'
+  ) {
+    return NextResponse.redirect(
+      `https://${request.headers.get('host')}${request.nextUrl.pathname}`,
+      301
+    )
+  }
+
+  const response = NextResponse.next()
+  
+  // Security headers
+  response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('X-XSS-Protection', '1; mode=block')
+  
+  return response
+}
+```
+
+### ✅ CORS & Cross-Origin Security
+
+#### 10. CORS Configuration
+- [ ] **CORS origins** explicitly whitelisted
+- [ ] **Credentials handling** properly configured
+- [ ] **Preflight requests** handled correctly
+- [ ] **Methods and headers** restricted
+- [ ] **CORS in development** vs production
+
+```typescript
+// ✅ CORRECT - Restrictive CORS configuration
+export async function OPTIONS(request: NextRequest) {
+  const allowedOrigins = [
+    'https://yourdomain.com',
+    'https://www.yourdomain.com',
+    ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000'] : [])
+  ]
+  
+  const origin = request.headers.get('origin')
+  
+  if (!origin || !allowedOrigins.includes(origin)) {
+    return new NextResponse(null, { status: 403 })
+  }
+  
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Max-Age': '86400',
+    },
+  })
+}
+```
+
+### ✅ Environment & Configuration Security
+
+#### 11. Environment Variables
+- [ ] **Secrets not hardcoded** in source code
+- [ ] **Environment-specific configs** properly separated
+- [ ] **Production secrets** different from development
+- [ ] **Secret rotation** implemented
+- [ ] **Access logging** for sensitive operations
+
+```typescript
+// ✅ CORRECT - Environment variable validation
+import { z } from 'zod'
+
+const envSchema = z.object({
+  DATABASE_URL: z.string().url(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  NEXTAUTH_SECRET: z.string().min(32),
+  ALLOWED_ORIGINS: z.string().transform(str => str.split(',')),
+})
+
+// Validate environment variables at startup
+export const env = envSchema.parse(process.env)
+```
+
+#### 12. Security Headers
+- [ ] **Content Security Policy** (CSP) configured
+- [ ] **X-Frame-Options** set to DENY
+- [ ] **X-Content-Type-Options** set to nosniff
+- [ ] **Referrer-Policy** configured
+- [ ] **Permissions-Policy** restricted
+
+```typescript
+// ✅ CORRECT - Comprehensive security headers
+export function securityHeaders() {
+  return {
+    'Content-Security-Policy': [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "font-src 'self'",
+      "connect-src 'self' https://api.supabase.co",
+      "frame-ancestors 'none'",
+    ].join('; '),
+    'X-Frame-Options': 'DENY',
+    'X-Content-Type-Options': 'nosniff',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  }
+}
+```
+
+## Security Testing Checklist
+
+### ✅ Automated Security Testing
+
+#### 13. Static Analysis
+- [ ] **ESLint security rules** enabled
+- [ ] **Dependency vulnerability scanning** (npm audit)
+- [ ] **Secret scanning** in CI/CD
+- [ ] **Code quality gates** enforced
+- [ ] **Security linting** automated
+
+```json
+// .eslintrc.json - Security rules
+{
+  "extends": [
+    "next/core-web-vitals",
+    "plugin:security/recommended"
+  ],
+  "plugins": ["security"],
+  "rules": {
+    "security/detect-object-injection": "error",
+    "security/detect-non-literal-regexp": "error",
+    "security/detect-unsafe-regex": "error",
+    "security/detect-buffer-noassert": "error",
+    "security/detect-child-process": "error",
+    "security/detect-disable-mustache-escape": "error",
+    "security/detect-eval-with-expression": "error",
+    "security/detect-no-csrf-before-method-override": "error",
+    "security/detect-non-literal-fs-filename": "error",
+    "security/detect-non-literal-require": "error",
+    "security/detect-possible-timing-attacks": "error",
+    "security/detect-pseudoRandomBytes": "error"
+  }
+}
+```
+
+#### 14. Dynamic Testing
+- [ ] **Penetration testing** performed
+- [ ] **OWASP ZAP scanning** automated
+- [ ] **SQL injection testing** completed
+- [ ] **XSS testing** performed
+- [ ] **Authentication bypass testing** done
+
+### ✅ Manual Security Review
+
+#### 15. Code Review Checklist
+- [ ] **Authentication logic** reviewed
+- [ ] **Authorization checks** verified
+- [ ] **Input validation** confirmed
+- [ ] **Error handling** assessed
+- [ ] **Logging and monitoring** evaluated
+
+#### 16. Infrastructure Security
+- [ ] **Database security** configured
+- [ ] **Network security** implemented
+- [ ] **Access controls** verified
+- [ ] **Backup security** ensured
+- [ ] **Monitoring and alerting** active
+
+## Production Security Monitoring
+
+### ✅ Logging & Monitoring
+
+#### 17. Security Logging
+- [ ] **Authentication events** logged
+- [ ] **Authorization failures** tracked
+- [ ] **Rate limit violations** monitored
+- [ ] **Suspicious patterns** detected
+- [ ] **Error patterns** analyzed
+
+```typescript
+// ✅ CORRECT - Security event logging
+import { createClient } from '@/lib/supabase/server'
+
+export async function logSecurityEvent(
+  event: 'login' | 'logout' | 'auth_failure' | 'rate_limit' | 'suspicious_activity',
+  details: {
+    userId?: string
+    ip?: string
+    userAgent?: string
+    endpoint?: string
+    metadata?: Record<string, any>
+  }
+) {
+  const supabase = await createClient()
+  
+  await supabase.from('security_logs').insert({
+    event,
+    user_id: details.userId,
+    ip_address: details.ip,
+    user_agent: details.userAgent,
+    endpoint: details.endpoint,
+    metadata: details.metadata,
+    created_at: new Date().toISOString(),
+  })
+}
+
+// Usage in API route
+export async function POST(request: NextRequest) {
+  const ip = request.ip ?? 'unknown'
+  const userAgent = request.headers.get('user-agent') ?? 'unknown'
+  
+  try {
+    // ... authentication logic
+    
+    await logSecurityEvent('login', {
+      userId: user.id,
+      ip,
+      userAgent,
+      endpoint: '/api/auth/login'
+    })
+    
+  } catch (error) {
+    await logSecurityEvent('auth_failure', {
+      ip,
+      userAgent,
+      endpoint: '/api/auth/login',
+      metadata: { error: error.message }
+    })
+    
+    throw error
+  }
+}
+```
+
+#### 18. Alerting & Response
+- [ ] **Failed authentication alerts** configured
+- [ ] **Rate limit breach alerts** set up
+- [ ] **Unusual activity alerts** enabled
+- [ ] **Security incident response** plan ready
+- [ ] **Automated threat response** implemented
+
+## Security Compliance
+
+### ✅ Regulatory Compliance
+
+#### 19. Data Protection
+- [ ] **GDPR compliance** implemented (if applicable)
+- [ ] **CCPA compliance** ensured (if applicable)
+- [ ] **Data retention policies** enforced
+- [ ] **Right to deletion** implemented
+- [ ] **Data portability** supported
+
+#### 20. Industry Standards
+- [ ] **OWASP Top 10** vulnerabilities addressed
+- [ ] **Security frameworks** followed (NIST, ISO 27001)
+- [ ] **Regular security assessments** scheduled
+- [ ] **Third-party security audits** completed
+- [ ] **Compliance documentation** maintained
+
+## Emergency Response Plan
+
+### ✅ Incident Response
+
+#### 21. Breach Response
+- [ ] **Incident response plan** documented
+- [ ] **Security team contacts** updated
+- [ ] **Communication templates** prepared
+- [ ] **Legal requirements** understood
+- [ ] **Recovery procedures** tested
+
+#### 22. Business Continuity
+- [ ] **Backup and recovery** tested
+- [ ] **Failover procedures** documented
+- [ ] **Service degradation** plans ready
+- [ ] **Customer communication** prepared
+- [ ] **Post-incident review** process defined
+
+## Quick Security Audit Commands
+
+```bash
+# Check for security vulnerabilities
+npm audit
+
+# Run security linting
+npx eslint . --ext .ts,.tsx --config .eslintrc.security.json
+
+# Check for secrets in code
+npx secretlint "**/*"
+
+# Analyze bundle for security issues
+npx next build && npx next-bundle-analyzer
+
+# Test API endpoints
+curl -X POST https://yourapi.com/api/test \
+  -H "Content-Type: application/json" \
+  -d '{"test": "data"}'
+```
+
+## Next Steps
+
+- [Deployment Security](./deployment-security.md) - Production security setup
+- [Common Security Mistakes](./common-security-mistakes.md) - Avoid these pitfalls
+- [Authentication Security](./authentication-security.md) - Deep dive into auth security

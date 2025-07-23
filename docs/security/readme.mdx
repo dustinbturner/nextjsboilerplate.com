@@ -1,0 +1,61 @@
+# 01 - Security (Security-First Mindset)
+
+**Problem this solves:** Most developers add security as an afterthought, leading to vulnerabilities that are expensive to fix later.
+
+**What happens if you get this wrong:** Data breaches, user trust loss, legal liability, and potentially business-ending security incidents.
+
+## 🚨 Why Security First?
+
+Security isn't a feature you add later - it's a foundation you build on. This section teaches you to think like an attacker so you can defend like a professional.
+
+## Files in This Section
+
+### 🔥 High-Priority (Start Here)
+- `row-level-security-explained.md` - **THE #1 PAIN POINT** - RLS deep dive with examples
+- `environment-variables-security.md` - .env best practices, what to NEVER commit
+- `common-security-mistakes.md` - What beginners do wrong (and how to fix it)
+
+### Core Security Files
+- `README.md` - Why security matters from day 1 (you are here)
+- `authentication-security.md` - Auth best practices, JWT security
+- `api-security-checklist.md` - Rate limiting, input validation, CORS
+- `deployment-security.md` - Production security checklist
+
+## Learning Path
+
+1. **Start Here**: `row-level-security-explained.md` - Master the biggest challenge
+2. **Secure Your Secrets**: `environment-variables-security.md` - Protect sensitive data
+3. **Auth Security**: `authentication-security.md` - Secure user flows
+4. **API Protection**: `api-security-checklist.md` - Defend your endpoints
+5. **Production Ready**: `deployment-security.md` - Go live safely
+6. **Avoid Pitfalls**: `common-security-mistakes.md` - Learn from others' mistakes
+
+## Security Mindset Principles
+
+- **Assume Breach**: Plan for when (not if) something goes wrong
+- **Defense in Depth**: Multiple layers of security
+- **Least Privilege**: Give minimum access needed
+- **Fail Secure**: When something breaks, fail to a secure state
+- **Validate Everything**: Never trust user input
+
+## Quick Security Checklist
+
+### Before You Code
+- [ ] Environment variables properly configured
+- [ ] Database RLS policies planned
+- [ ] Authentication flow mapped out
+
+### Before You Deploy
+- [ ] All tables have RLS enabled
+- [ ] Input validation on all endpoints
+- [ ] Security headers configured
+- [ ] Rate limiting implemented
+- [ ] Secrets audit completed
+
+## Success Criteria
+
+After completing this section, you should:
+- Understand Row Level Security and implement it correctly
+- Know how to handle environment variables securely
+- Have a security-first mindset when building features
+- Be able to identify and fix common security vulnerabilities

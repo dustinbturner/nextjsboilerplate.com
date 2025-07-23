@@ -1,0 +1,516 @@
+# Authentication Security
+
+## What Problem Does This Solve?
+
+Authentication is the gateway to your application. Poor authentication security leads to account takeovers, data breaches, and compromised user trust.
+
+## What Happens If You Get This Wrong?
+
+- **Account takeovers**: Attackers gain access to user accounts
+- **Session hijacking**: Stolen sessions used maliciously
+- **Credential stuffing**: Weak passwords lead to breaches
+- **Legal liability**: GDPR, CCPA violations from compromised accounts
+
+## Supabase Auth Security Fundamentals
+
+### JWT Token Security
+
+Supabase uses JWT tokens for authentication. Understanding how they work is crucial:
+
+```typescript
+// JWT structure: header.payload.signature
+// Example token (shortened):
+eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNjk...
+```
+
+**Key Security Features:**
+- **Signed**: Can't be tampered with
+- **Expiring**: Automatic logout after expiry
+- **Stateless**: No server-side session storage needed
+
+### Secure Token Storage
+
+```typescript
+// ✅ CORRECT - Supabase handles secure storage automatically
+const { data, error } = await supabase.auth.signInWithPassword({
+  email: 'user@example.com',
+  password: 'password'
+})
+// Token stored in httpOnly cookies (secure)
+
+// ❌ WRONG - Don't manually store tokens
+localStorage.setItem('token', data.session?.access_token) // Vulnerable to XSS
+```
+
+## Authentication Flow Security
+
+### 1. Secure Login Implementation
+
+```typescript
+// src/app/login/actions.ts
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { z } from 'zod'
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(8, 'Password must be at least 8 characters')
+})
+
+export async function loginAction(formData: FormData) {
+  const supabase = await createClient()
+  
+  // Validate input
+  const result = loginSchema.safeParse({
+    email: formData.get('email'),
+    password: formData.get('password')
+  })
+  
+  if (!result.success) {
+    return { error: 'Invalid input' }
+  }
+  
+  const { email, password } = result.data
+  
+  // Rate limiting should be handled by Supabase
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  })
+  
+  if (error) {
+    // Don't reveal specific error details
+    return { error: 'Invalid credentials' }
+  }
+  
+  redirect('/dashboard')
+}
+```
+
+### 2. Secure Registration
+
+```typescript
+// src/app/register/actions.ts
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase, and number')
+})
+
+export async function registerAction(formData: FormData) {
+  const supabase = await createClient()
+  
+  const result = registerSchema.safeParse({
+    email: formData.get('email'),
+    password: formData.get('password')
+  })
+  
+  if (!result.success) {
+    return { error: result.error.issues[0].message }
+  }
+  
+  const { email, password } = result.data
+  
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+    }
+  })
+  
+  if (error) {
+    return { error: 'Registration failed' }
+  }
+  
+  return { success: 'Check your email to confirm your account' }
+}
+```
+
+## Password Security
+
+### 1. Strong Password Requirements
+
+```typescript
+// src/lib/auth/password-validation.ts
+import { z } from 'zod'
+
+export const passwordSchema = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .max(128, 'Password must be less than 128 characters')
+  .regex(/^(?=.*[a-z])/, 'Password must contain at least one lowercase letter')
+  .regex(/^(?=.*[A-Z])/, 'Password must contain at least one uppercase letter')
+  .regex(/^(?=.*\d)/, 'Password must contain at least one number')
+  .regex(/^(?=.*[@$!%*?&])/, 'Password must contain at least one special character')
+
+export function validatePassword(password: string) {
+  return passwordSchema.safeParse(password)
+}
+```
+
+### 2. Password Reset Security
+
+```typescript
+// src/app/reset-password/actions.ts
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+
+const resetSchema = z.object({
+  email: z.string().email()
+})
+
+export async function resetPasswordAction(formData: FormData) {
+  const supabase = await createClient()
+  
+  const result = resetSchema.safeParse({
+    email: formData.get('email')
+  })
+  
+  if (!result.success) {
+    return { error: 'Invalid email' }
+  }
+  
+  const { email } = result.data
+  
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password/confirm`
+  })
+  
+  // Always return success to prevent email enumeration
+  return { success: 'If an account exists, you will receive a reset email' }
+}
+```
+
+## Session Management Security
+
+### 1. Secure Middleware
+
+```typescript
+// middleware.ts
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse, type NextRequest } from 'next/server'
+
+export async function middleware(request: NextRequest) {
+  let supabaseResponse = NextResponse.next({
+    request,
+  })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => 
+            request.cookies.set(name, value)
+          )
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  // Refresh session if expired
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Protect authenticated routes
+  if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  // Redirect authenticated users away from auth pages
+  if (user && (
+    request.nextUrl.pathname.startsWith('/login') ||
+    request.nextUrl.pathname.startsWith('/register')
+  )) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
+
+  return supabaseResponse
+}
+
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}
+```
+
+### 2. Session Timeout
+
+```typescript
+// src/lib/auth/session-timeout.ts
+'use client'
+
+import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
+
+export function useSessionTimeout() {
+  const router = useRouter()
+  const supabase = createClient()
+
+  useEffect(() => {
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_OUT' || !session) {
+          router.push('/login')
+        }
+        
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('Session refreshed')
+        }
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [router, supabase])
+}
+```
+
+## Multi-Factor Authentication (MFA)
+
+### 1. Enable MFA in Supabase
+
+```sql
+-- Enable MFA for your project (run in Supabase SQL editor)
+-- This is handled through Supabase dashboard settings
+```
+
+### 2. Implement MFA Flow
+
+```typescript
+// src/lib/auth/mfa.ts
+import { createClient } from '@/lib/supabase/client'
+
+export async function enrollMFA() {
+  const supabase = createClient()
+  
+  const { data, error } = await supabase.auth.mfa.enroll({
+    factorType: 'totp'
+  })
+  
+  if (error) {
+    throw new Error('Failed to enroll MFA')
+  }
+  
+  return data
+}
+
+export async function verifyMFA(code: string, factorId: string) {
+  const supabase = createClient()
+  
+  const { data, error } = await supabase.auth.mfa.verify({
+    factorId,
+    challengeId: 'challenge-id', // From enrollment
+    code
+  })
+  
+  if (error) {
+    throw new Error('Invalid MFA code')
+  }
+  
+  return data
+}
+```
+
+## Social Authentication Security
+
+### 1. Secure OAuth Configuration
+
+```typescript
+// src/lib/auth/social.ts
+import { createClient } from '@/lib/supabase/client'
+
+export async function signInWithGoogle() {
+  const supabase = createClient()
+  
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    }
+  })
+  
+  if (error) {
+    throw new Error('Social login failed')
+  }
+  
+  return data
+}
+```
+
+### 2. OAuth Security Best Practices
+
+- **Use HTTPS**: Always use HTTPS for OAuth redirects
+- **Validate state parameter**: Prevent CSRF attacks
+- **Limit scopes**: Only request necessary permissions
+- **Secure redirect URIs**: Whitelist allowed redirect URIs
+
+## Common Authentication Vulnerabilities
+
+### 1. Timing Attacks
+
+```typescript
+// ❌ WRONG - Reveals if email exists
+export async function loginAction(email: string, password: string) {
+  const user = await getUserByEmail(email)
+  if (!user) {
+    return { error: 'User not found' } // Fast response
+  }
+  
+  const valid = await verifyPassword(password, user.hash)
+  if (!valid) {
+    return { error: 'Invalid password' } // Slow response
+  }
+}
+
+// ✅ CORRECT - Consistent timing
+export async function loginAction(email: string, password: string) {
+  const user = await getUserByEmail(email)
+  const hash = user?.password_hash || '$2b$10$dummy.hash.to.prevent.timing'
+  
+  const valid = await verifyPassword(password, hash)
+  
+  if (!user || !valid) {
+    return { error: 'Invalid credentials' } // Same response time
+  }
+}
+```
+
+### 2. Session Fixation
+
+```typescript
+// ✅ Supabase handles session regeneration automatically
+// New session ID is created on each login
+```
+
+### 3. Brute Force Protection
+
+```typescript
+// src/lib/auth/rate-limiting.ts
+import { createClient } from '@/lib/supabase/server'
+
+export async function checkRateLimit(email: string) {
+  // Supabase has built-in rate limiting
+  // Additional rate limiting can be implemented with Redis/Upstash
+  
+  const attempts = await getLoginAttempts(email)
+  
+  if (attempts > 5) {
+    throw new Error('Too many login attempts. Try again later.')
+  }
+}
+```
+
+## Security Monitoring
+
+### 1. Auth Event Logging
+
+```typescript
+// src/lib/auth/logging.ts
+import { createClient } from '@/lib/supabase/server'
+
+export async function logAuthEvent(
+  event: 'login' | 'logout' | 'register' | 'password_reset',
+  userId?: string,
+  metadata?: Record<string, any>
+) {
+  const supabase = await createClient()
+  
+  await supabase.from('auth_logs').insert({
+    event,
+    user_id: userId,
+    metadata,
+    ip_address: metadata?.ip,
+    user_agent: metadata?.userAgent,
+    created_at: new Date().toISOString()
+  })
+}
+```
+
+### 2. Suspicious Activity Detection
+
+```typescript
+// src/lib/auth/security-monitoring.ts
+export async function detectSuspiciousActivity(userId: string) {
+  // Check for:
+  // - Multiple failed login attempts
+  // - Login from new locations
+  // - Unusual access patterns
+  // - Multiple concurrent sessions
+  
+  const recentLogins = await getRecentLogins(userId)
+  const suspiciousPatterns = analyzePatternsForSuspiciousActivity(recentLogins)
+  
+  if (suspiciousPatterns.length > 0) {
+    await notifySecurityTeam(userId, suspiciousPatterns)
+    await requireAdditionalVerification(userId)
+  }
+}
+```
+
+## Testing Authentication Security
+
+### 1. Security Test Cases
+
+```typescript
+// tests/auth-security.test.ts
+describe('Authentication Security', () => {
+  test('should reject weak passwords', async () => {
+    const result = await registerUser('user@example.com', '123')
+    expect(result.error).toContain('Password must be at least 8 characters')
+  })
+  
+  test('should prevent email enumeration', async () => {
+    const result1 = await resetPassword('existing@example.com')
+    const result2 = await resetPassword('nonexistent@example.com')
+    
+    // Both should return the same message
+    expect(result1.message).toBe(result2.message)
+  })
+  
+  test('should handle concurrent login attempts', async () => {
+    const promises = Array(10).fill(null).map(() => 
+      loginUser('user@example.com', 'wrongpassword')
+    )
+    
+    const results = await Promise.all(promises)
+    // Should be rate limited after a few attempts
+    expect(results.some(r => r.error.includes('rate limit'))).toBe(true)
+  })
+})
+```
+
+## Next Steps
+
+- [API Security Checklist](./api-security-checklist.md) - Secure your API endpoints
+- [Deployment Security](./deployment-security.md) - Production security
+- [Common Security Mistakes](./common-security-mistakes.md) - Avoid these pitfalls

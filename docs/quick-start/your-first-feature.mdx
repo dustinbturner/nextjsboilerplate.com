@@ -1,0 +1,264 @@
+# Your First Feature
+
+## What Problem Does This Solve?
+
+The best way to understand how all the pieces fit together is to build something real. This guide walks you through creating a simple feature that demonstrates the core patterns you'll use throughout your application.
+
+## What We're Building
+
+A simple "User Profile" feature that demonstrates:
+- Authentication flow
+- Database operations with RLS
+- Server and client components
+- Form handling
+- Error states
+
+## Prerequisites
+
+- Project setup complete
+- Supabase connected
+- Environment variables configured
+
+## Step 1: Database Schema
+
+First, let's create a user profiles table in Supabase:
+
+```sql
+-- Run this in your Supabase SQL editor
+create table profiles (
+  id uuid references auth.users on delete cascade primary key,
+  email text,
+  full_name text,
+  avatar_url text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Set up Row Level Security (RLS)
+alter table profiles enable row level security;
+
+-- Users can view and update their own profile
+create policy "Users can view own profile" 
+  on profiles for select 
+  using (auth.uid() = id);
+
+create policy "Users can update own profile" 
+  on profiles for update 
+  using (auth.uid() = id);
+
+create policy "Users can insert own profile" 
+  on profiles for insert 
+  with check (auth.uid() = id);
+```
+
+## Step 2: Create the Profile Page
+
+Create a new page at `src/app/profile/page.tsx`:
+
+```tsx
+// src/app/profile/page.tsx
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import { ProfileForm } from '@/components/profile/profile-form'
+
+export default async function ProfilePage() {
+  const supabase = await createClient()
+  
+  // Check if user is authenticated
+  const { data: { user }, error } = await supabase.auth.getUser()
+  
+  if (error || !user) {
+    redirect('/login')
+  }
+
+  // Fetch user profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  return (
+    <div className="container mx-auto py-8">
+      <h1 className="text-2xl font-bold mb-6">Your Profile</h1>
+      <ProfileForm user={user} profile={profile} />
+    </div>
+  )
+}
+```
+
+## Step 3: Create the Profile Form Component
+
+Create `src/components/profile/profile-form.tsx`:
+
+```tsx
+'use client'
+
+import { useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useRouter } from 'next/navigation'
+import type { User } from '@supabase/supabase-js'
+
+interface Profile {
+  id: string
+  email: string | null
+  full_name: string | null
+  avatar_url: string | null
+}
+
+interface ProfileFormProps {
+  user: User
+  profile: Profile | null
+}
+
+export function ProfileForm({ user, profile }: ProfileFormProps) {
+  const [loading, setLoading] = useState(false)
+  const [fullName, setFullName] = useState(profile?.full_name || '')
+  const router = useRouter()
+  const supabase = createClient()
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          full_name: fullName,
+          updated_at: new Date().toISOString(),
+        })
+
+      if (error) throw error
+
+      alert('Profile updated successfully!')
+      router.refresh()
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      alert('Error updating profile')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+      <div>
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={user.email || ''}
+          disabled
+          className="bg-gray-50"
+        />
+        <p className="text-sm text-gray-500 mt-1">
+          Email cannot be changed
+        </p>
+      </div>
+
+      <div>
+        <Label htmlFor="fullName">Full Name</Label>
+        <Input
+          id="fullName"
+          type="text"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder="Enter your full name"
+        />
+      </div>
+
+      <Button type="submit" disabled={loading}>
+        {loading ? 'Updating...' : 'Update Profile'}
+      </Button>
+    </form>
+  )
+}
+```
+
+## Step 4: Add Navigation Link
+
+Add a link to your profile page in your navigation:
+
+```tsx
+// In your navigation component
+<Link href="/profile" className="nav-link">
+  Profile
+</Link>
+```
+
+## Step 5: Test Your Feature
+
+1. **Start your development server**:
+   ```bash
+   npm run dev
+   ```
+
+2. **Test the flow**:
+   - Navigate to `/profile`
+   - If not logged in, you should be redirected to login
+   - After logging in, you should see the profile form
+   - Update your name and submit
+   - Verify the data is saved in Supabase
+
+## What You Just Learned
+
+### 🎯 Key Patterns Demonstrated
+
+1. **Server Component for Data Fetching**
+   - `ProfilePage` fetches data on the server
+   - Automatic authentication check
+   - Direct database queries with RLS
+
+2. **Client Component for Interactivity**
+   - `ProfileForm` handles user interactions
+   - Form state management
+   - Client-side Supabase operations
+
+3. **Row Level Security in Action**
+   - Users can only see/edit their own profiles
+   - Security enforced at the database level
+
+4. **Error Handling**
+   - Redirect if not authenticated
+   - Try/catch for database operations
+   - Loading states for better UX
+
+## Common Issues & Solutions
+
+### "User not found" Error
+- Check if user is properly authenticated
+- Verify RLS policies are correct
+- Ensure user ID matches between auth and profiles table
+
+### Form Not Submitting
+- Check browser console for errors
+- Verify Supabase client is properly configured
+- Ensure all required fields are provided
+
+### Data Not Updating
+- Check RLS policies allow updates
+- Verify the user ID in the database matches auth.uid()
+- Look at Supabase logs for detailed errors
+
+## Next Steps
+
+Now that you understand the basic flow, you can:
+
+- [Add file uploads](../03%20-%20Supabase%20Integration/storage-and-file-uploads.md) for profile pictures
+- [Implement form validation](../05%20-%20API%20Design%20&%20Server%20Actions/input-validation-with-zod.md) with Zod
+- [Add loading and error states](../07%20-%20Frontend%20Architecture/error-boundaries-and-error-handling.md)
+
+## Try This Exercise
+
+Extend this feature by adding:
+1. A "bio" text area field
+2. A "website" URL field with validation
+3. A "Save" confirmation message that disappears after 3 seconds
+
+This will help you practice form handling, validation, and state management patterns.

@@ -1,0 +1,82 @@
+# 03 - Supabase Integration
+
+**Problem this solves:** Supabase is powerful but complex - developers struggle with RLS policies, client setup, and understanding when to use server vs client connections.
+
+**What happens if you get this wrong:** Security vulnerabilities, performance issues, auth failures, and data access problems.
+
+## 🎯 Integration Philosophy
+
+Supabase isn't just a database - it's your entire backend. This section teaches you to leverage its full power safely and efficiently.
+
+## Files in This Section
+
+### 🔥 High-Priority (Start Here)
+- `row-level-security-step-by-step.md` - **THE #1 PAIN POINT** - RLS policies creation guide
+- `supabase-client-setup.md` - Server vs client setup (critical for security)
+
+### Core Integration Files
+- `README.md` - Supabase overview & integration philosophy (you are here)
+- `supabase-auth-flow.md` - Authentication flow explained with diagrams
+- `database-schema-design.md` - Designing tables with RLS in mind
+- `storage-and-file-uploads.md` - File handling with RLS and security
+- `real-time-subscriptions.md` - Real-time features and best practices
+- `supabase-edge-functions.md` - When to use edge functions vs server actions
+- `troubleshooting-supabase.md` - Common issues & debugging strategies
+
+## Learning Path
+
+1. **Foundation**: `supabase-client-setup.md` - Get the basics right
+2. **Security Core**: `row-level-security-step-by-step.md` - Master RLS policies
+3. **Auth Flow**: `supabase-auth-flow.md` - Understand authentication
+4. **Schema Design**: `database-schema-design.md` - Design with security in mind
+5. **File Handling**: `storage-and-file-uploads.md` - Secure file operations
+6. **Real-time**: `real-time-subscriptions.md` - Add live features
+7. **Advanced**: `supabase-edge-functions.md` - When to use edge functions
+8. **Debugging**: `troubleshooting-supabase.md` - Fix common issues
+
+## Key Integration Principles
+
+### Security-First Design
+- **RLS Everywhere**: Every table gets policies before production
+- **Least Privilege**: Users only see/modify their own data
+- **Server-Side Validation**: Never trust client-side checks alone
+
+### Client Strategy
+- **Server Client**: For server components and API routes
+- **Browser Client**: For client components only
+- **Service Role**: For admin operations and migrations only
+
+### Performance Patterns
+- **Fetch Close to Use**: Get data where you need it
+- **Batch Operations**: Minimize round trips
+- **Real-time Sparingly**: Only for truly live features
+
+## Quick Architecture Overview
+
+```
+┌─ Server Components ─┐    ┌─ Client Components ─┐
+│ Server Supabase     │    │ Browser Supabase    │
+│ Client              │    │ Client              │
+│ (with cookies)      │    │ (session from       │
+│                     │    │  server)            │
+└─────────────────────┘    └─────────────────────┘
+         │                           │
+         └─────────┬─────────────────┘
+                   │
+         ┌─────────▼─────────┐
+         │   Supabase        │
+         │   - Database      │
+         │   - Auth          │
+         │   - Storage       │
+         │   - Edge Functions│
+         └───────────────────┘
+```
+
+## Success Criteria
+
+After completing this section, you should:
+- Understand when to use server vs browser Supabase clients
+- Be able to create and debug RLS policies confidently
+- Know how to design database schemas with security in mind
+- Understand Supabase auth flow and session management
+- Be able to implement secure file uploads and real-time features

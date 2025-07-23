@@ -1,0 +1,280 @@
+# Troubleshooting Setup
+
+## What Problem Does This Solve?
+
+Setup issues are the #1 reason developers abandon projects. This guide helps you quickly identify and fix the most common problems when getting started.
+
+## What Happens If You Get This Wrong?
+
+- Hours wasted on configuration issues
+- Frustration that kills motivation
+- Team members can't contribute to the project
+
+## Quick Diagnostic Checklist
+
+Run through this checklist when things aren't working:
+
+### ✅ Environment Variables
+```bash
+# Check if your .env.local file exists and has the right variables
+cat .env.local
+
+# Should contain:
+# NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+```
+
+### ✅ Dependencies
+```bash
+# Make sure all packages are installed
+npm install
+
+# Check for version conflicts
+npm ls
+```
+
+### ✅ Supabase Connection
+```bash
+# Test your Supabase connection
+npx supabase status
+```
+
+### ✅ Database
+```bash
+# Check if your database is running (if using local Supabase)
+npx supabase start
+```
+
+## Common Issues & Solutions
+
+### 1. "Module not found" Errors
+
+**Symptoms:**
+```
+Error: Cannot resolve module '@/lib/supabase/client'
+```
+
+**Solutions:**
+1. Check your `tsconfig.json` has the correct path mapping:
+   ```json
+   {
+     "compilerOptions": {
+       "paths": {
+         "@/*": ["./src/*"]
+       }
+     }
+   }
+   ```
+
+2. Restart your development server:
+   ```bash
+   npm run dev
+   ```
+
+3. Clear Next.js cache:
+   ```bash
+   rm -rf .next
+   npm run dev
+   ```
+
+### 2. Supabase Connection Issues
+
+**Symptoms:**
+```
+Error: Invalid API key
+Error: Project not found
+```
+
+**Solutions:**
+1. Verify your environment variables:
+   ```bash
+   echo $NEXT_PUBLIC_SUPABASE_URL
+   echo $NEXT_PUBLIC_SUPABASE_ANON_KEY
+   ```
+
+2. Check your Supabase project settings:
+   - Go to your Supabase dashboard
+   - Settings → API
+   - Copy the correct URL and anon key
+
+3. Restart your development server after changing env vars
+
+### 3. Authentication Not Working
+
+**Symptoms:**
+- Login form submits but nothing happens
+- Users get logged out immediately
+- "Invalid session" errors
+
+**Solutions:**
+1. Check your middleware is set up correctly:
+   ```typescript
+   // middleware.ts should exist in your project root
+   export { default } from '@/lib/supabase/middleware'
+   ```
+
+2. Verify your auth callback URL:
+   - Supabase Dashboard → Authentication → URL Configuration
+   - Site URL should be `http://localhost:3000` for development
+
+3. Check browser cookies are enabled
+
+### 4. Database/RLS Issues
+
+**Symptoms:**
+```
+Error: new row violates row-level security policy
+Error: permission denied for table
+```
+
+**Solutions:**
+1. Check if RLS is properly configured:
+   ```sql
+   -- In Supabase SQL editor
+   SELECT schemaname, tablename, rowsecurity 
+   FROM pg_tables 
+   WHERE tablename = 'your_table_name';
+   ```
+
+2. Verify your RLS policies exist:
+   ```sql
+   SELECT * FROM pg_policies WHERE tablename = 'your_table_name';
+   ```
+
+3. Test your policies with the RLS debugger in Supabase
+
+### 5. TypeScript Errors
+
+**Symptoms:**
+```
+Type 'null' is not assignable to type 'User'
+Property 'id' does not exist on type 'never'
+```
+
+**Solutions:**
+1. Generate Supabase types:
+   ```bash
+   npx supabase gen types typescript --project-id YOUR_PROJECT_ID > src/types/supabase.ts
+   ```
+
+2. Update your Supabase client imports to use typed clients
+
+3. Add proper null checks in your code:
+   ```typescript
+   if (!user) {
+     redirect('/login')
+   }
+   // Now TypeScript knows user is not null
+   ```
+
+### 6. Styling Issues
+
+**Symptoms:**
+- Tailwind classes not working
+- Components look unstyled
+- CSS not loading
+
+**Solutions:**
+1. Check Tailwind is properly configured:
+   ```bash
+   # Should show Tailwind config
+   cat tailwind.config.ts
+   ```
+
+2. Verify your CSS imports:
+   ```typescript
+   // In your root layout.tsx
+   import './globals.css'
+   ```
+
+3. Restart development server after Tailwind config changes
+
+### 7. Build/Production Issues
+
+**Symptoms:**
+```
+Error: Environment variable not found in production
+Error: Hydration mismatch
+```
+
+**Solutions:**
+1. Set environment variables in your deployment platform
+2. Check for client/server rendering mismatches
+3. Use `next build` locally to test production builds
+
+## Environment-Specific Issues
+
+### Development Environment
+
+**Port already in use:**
+```bash
+# Kill process on port 3000
+npx kill-port 3000
+
+# Or use a different port
+npm run dev -- -p 3001
+```
+
+**Hot reload not working:**
+- Check if you're editing files outside the `src` directory
+- Restart the development server
+- Clear browser cache
+
+### Production Environment
+
+**Environment variables not found:**
+- Set variables in your deployment platform (Vercel, Netlify, etc.)
+- Don't rely on `.env` files in production
+
+**Database connection issues:**
+- Use connection pooling for production
+- Check your database URL format
+- Verify firewall/security group settings
+
+## Getting Help
+
+### Before Asking for Help
+
+1. **Check the error message carefully** - it usually tells you exactly what's wrong
+2. **Look at the browser console** - client-side errors show up there
+3. **Check the terminal** - server-side errors appear in your development server logs
+4. **Try the solution in isolation** - create a minimal reproduction
+
+### Where to Get Help
+
+1. **Supabase Discord** - Great for Supabase-specific issues
+2. **Next.js GitHub Discussions** - Framework-related questions
+3. **Stack Overflow** - General programming questions
+4. **Project Documentation** - Check other docs in this folder
+
+### How to Ask Good Questions
+
+Include:
+- **Exact error message** (copy/paste, don't paraphrase)
+- **What you were trying to do** when the error occurred
+- **Your environment** (Node version, OS, browser)
+- **Code that reproduces the issue** (minimal example)
+- **What you've already tried**
+
+## Prevention Tips
+
+### ✅ DO
+
+- Keep your dependencies up to date
+- Use version control for your environment file templates
+- Document any custom setup steps for your team
+- Test your setup on a fresh machine/environment
+
+### ❌ DON'T
+
+- Ignore warning messages (they often predict future errors)
+- Mix different versions of related packages
+- Skip reading error messages carefully
+- Change multiple things at once when debugging
+
+## Next Steps
+
+Once you've resolved your setup issues:
+
+- [Understanding the File Structure](./understanding-the-file-structure.md) - Get oriented in the codebase
+- [Your First Feature](./your-first-feature.md) - Build something to test your setup

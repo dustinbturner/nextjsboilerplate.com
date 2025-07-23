@@ -1,0 +1,478 @@
+# Row Level Security Step by Step
+
+## What Problem Does This Solve?
+
+This is the hands-on guide to implementing RLS correctly. This is the **#1 pain point** for new Supabase developers, so we'll walk through it step by step with real examples.
+
+## What Happens If You Get This Wrong?
+
+- Users can see other users' private data
+- Data breaches and security vulnerabilities
+- Hours of debugging mysterious access issues
+
+## Prerequisites
+
+- Supabase project set up
+- Basic understanding of SQL
+- A table you want to secure
+
+## Real Example: Securing a Todo App
+
+Let's secure a simple todos table where users should only see their own todos.
+
+### Step 1: Create the Table
+
+```sql
+-- Run this in Supabase SQL Editor
+CREATE TABLE todos (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  completed BOOLEAN DEFAULT false,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+### Step 2: Enable RLS
+
+```sql
+-- This is CRITICAL - without this, anyone can access everything
+ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
+```
+
+⚠️ **Important**: After running this command, NO ONE can access the table until you create policies!
+
+### Step 3: Test That RLS is Working
+
+Try to query the table - you should get no results:
+
+```sql
+SELECT * FROM todos; -- Should return empty (even if data exists)
+```
+
+If you get results, RLS isn't properly enabled.
+
+### Step 4: Create Your First Policy
+
+```sql
+-- Allow users to see only their own todos
+CREATE POLICY "Users can view own todos" 
+  ON todos 
+  FOR SELECT 
+  USING (auth.uid() = user_id);
+```
+
+Now test again:
+```sql
+SELECT * FROM todos; -- Should show only your todos
+```
+
+### Step 5: Add Insert Policy
+
+```sql
+-- Allow users to create todos for themselves
+CREATE POLICY "Users can insert own todos" 
+  ON todos 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+```
+
+Test inserting:
+```sql
+INSERT INTO todos (title, user_id) 
+VALUES ('Test todo', auth.uid());
+```
+
+### Step 6: Add Update Policy
+
+```sql
+-- Allow users to update their own todos
+CREATE POLICY "Users can update own todos" 
+  ON todos 
+  FOR UPDATE 
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+```
+
+Test updating:
+```sql
+UPDATE todos 
+SET completed = true 
+WHERE title = 'Test todo';
+```
+
+### Step 7: Add Delete Policy
+
+```sql
+-- Allow users to delete their own todos
+CREATE POLICY "Users can delete own todos" 
+  ON todos 
+  FOR DELETE 
+  USING (auth.uid() = user_id);
+```
+
+Test deleting:
+```sql
+DELETE FROM todos WHERE title = 'Test todo';
+```
+
+## Understanding Policy Types
+
+### SELECT Policies (Reading Data)
+
+```sql
+CREATE POLICY "policy_name" 
+  ON table_name 
+  FOR SELECT 
+  USING (condition);
+```
+
+- **USING**: Determines which rows the user can see
+- Example: `USING (auth.uid() = user_id)` - only see own rows
+
+### INSERT Policies (Creating Data)
+
+```sql
+CREATE POLICY "policy_name" 
+  ON table_name 
+  FOR INSERT 
+  WITH CHECK (condition);
+```
+
+- **WITH CHECK**: Validates the data being inserted
+- Example: `WITH CHECK (auth.uid() = user_id)` - can only create rows for yourself
+
+### UPDATE Policies (Modifying Data)
+
+```sql
+CREATE POLICY "policy_name" 
+  ON table_name 
+  FOR UPDATE 
+  USING (condition)
+  WITH CHECK (condition);
+```
+
+- **USING**: Which existing rows can be updated
+- **WITH CHECK**: Validates the new data after update
+- Both conditions must be true
+
+### DELETE Policies (Removing Data)
+
+```sql
+CREATE POLICY "policy_name" 
+  ON table_name 
+  FOR DELETE 
+  USING (condition);
+```
+
+- **USING**: Which rows can be deleted
+- Example: `USING (auth.uid() = user_id)` - can only delete own rows
+
+## Common Patterns with Examples
+
+### Pattern 1: Simple User Ownership
+
+```sql
+-- Table structure
+CREATE TABLE user_profiles (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id),
+  name TEXT,
+  email TEXT
+);
+
+-- RLS Policies
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users manage own profile" 
+  ON user_profiles 
+  FOR ALL 
+  USING (auth.uid() = user_id);
+```
+
+### Pattern 2: Public Read, Owner Write
+
+```sql
+-- Table structure
+CREATE TABLE blog_posts (
+  id UUID PRIMARY KEY,
+  author_id UUID REFERENCES auth.users(id),
+  title TEXT,
+  content TEXT,
+  published BOOLEAN DEFAULT false
+);
+
+-- RLS Policies
+ALTER TABLE blog_posts ENABLE ROW LEVEL SECURITY;
+
+-- Anyone can read published posts
+CREATE POLICY "Anyone can read published posts" 
+  ON blog_posts 
+  FOR SELECT 
+  USING (published = true);
+
+-- Authors can do everything with their posts
+CREATE POLICY "Authors manage own posts" 
+  ON blog_posts 
+  FOR ALL 
+  USING (auth.uid() = author_id);
+```
+
+### Pattern 3: Team/Organization Access
+
+```sql
+-- Table structure
+CREATE TABLE team_documents (
+  id UUID PRIMARY KEY,
+  team_id UUID,
+  title TEXT,
+  content TEXT
+);
+
+CREATE TABLE team_members (
+  team_id UUID,
+  user_id UUID REFERENCES auth.users(id),
+  role TEXT
+);
+
+-- RLS Policies
+ALTER TABLE team_documents ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Team members can access documents" 
+  ON team_documents 
+  FOR SELECT 
+  USING (
+    team_id IN (
+      SELECT team_id 
+      FROM team_members 
+      WHERE user_id = auth.uid()
+    )
+  );
+```
+
+## Testing Your RLS Policies
+
+### Method 1: Use Different Test Users
+
+1. Create test users in Supabase Auth
+2. Switch between users in the SQL editor
+3. Run the same queries as different users
+
+```sql
+-- Check which user you're testing as
+SELECT auth.uid(), auth.email();
+
+-- Test your queries
+SELECT * FROM todos;
+INSERT INTO todos (title, user_id) VALUES ('Test', auth.uid());
+```
+
+### Method 2: Use the RLS Debugger
+
+1. Go to Database → Policies in Supabase Dashboard
+2. Find your table and click "Test policy"
+3. Try different scenarios and user IDs
+
+### Method 3: Test in Your Application
+
+```typescript
+// In your Next.js app
+const { data: todos } = await supabase
+  .from('todos')
+  .select('*')
+
+console.log('User can see:', todos?.length, 'todos')
+```
+
+## Debugging RLS Issues
+
+### Issue: "No rows returned" when you expect data
+
+**Check 1: Is RLS enabled?**
+```sql
+SELECT schemaname, tablename, rowsecurity 
+FROM pg_tables 
+WHERE tablename = 'your_table';
+-- rowsecurity should be 't' (true)
+```
+
+**Check 2: Do policies exist?**
+```sql
+SELECT * FROM pg_policies WHERE tablename = 'your_table';
+```
+
+**Check 3: Is auth.uid() what you expect?**
+```sql
+SELECT auth.uid(); -- Should return your user ID
+```
+
+**Check 4: Does your data have the right user_id?**
+```sql
+-- Temporarily disable RLS to see all data
+ALTER TABLE your_table DISABLE ROW LEVEL SECURITY;
+SELECT * FROM your_table;
+-- Re-enable RLS
+ALTER TABLE your_table ENABLE ROW LEVEL SECURITY;
+```
+
+### Issue: "Permission denied for table"
+
+This means you don't have a policy for the operation you're trying to perform.
+
+```sql
+-- Check what policies exist
+SELECT cmd, qual FROM pg_policies WHERE tablename = 'your_table';
+-- cmd shows the operation (SELECT, INSERT, UPDATE, DELETE)
+```
+
+Create the missing policy:
+```sql
+-- Example: Missing INSERT policy
+CREATE POLICY "Users can insert own data" 
+  ON your_table 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+```
+
+### Issue: Policies seem correct but still not working
+
+**Check the policy condition:**
+```sql
+-- Test your policy condition directly
+SELECT auth.uid() = user_id FROM your_table;
+-- Should return true for rows you should see
+```
+
+**Check for typos in column names:**
+```sql
+-- List all columns in your table
+\d your_table
+-- or
+SELECT column_name FROM information_schema.columns 
+WHERE table_name = 'your_table';
+```
+
+## Performance Tips
+
+### 1. Index Policy Columns
+
+```sql
+-- If your policy filters on user_id, index it
+CREATE INDEX idx_todos_user_id ON todos(user_id);
+```
+
+### 2. Keep Policies Simple
+
+```sql
+-- ✅ Good - Simple and fast
+USING (auth.uid() = user_id)
+
+-- ❌ Avoid - Complex subqueries
+USING (
+  auth.uid() IN (
+    SELECT user_id FROM complex_permissions_view
+  )
+)
+```
+
+### 3. Use Functions for Complex Logic
+
+```sql
+-- Create a function for complex logic
+CREATE OR REPLACE FUNCTION user_can_access_team(team_uuid UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM team_members 
+    WHERE team_id = team_uuid 
+    AND user_id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Use it in policies
+CREATE POLICY "Team access" 
+  ON team_data 
+  FOR SELECT 
+  USING (user_can_access_team(team_id));
+```
+
+## Complete Example: Secure Notes App
+
+Here's a complete example with all the pieces:
+
+```sql
+-- 1. Create the table
+CREATE TABLE notes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  is_public BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 2. Enable RLS
+ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
+
+-- 3. Create policies
+-- Users can see their own notes
+CREATE POLICY "Users can view own notes" 
+  ON notes 
+  FOR SELECT 
+  USING (auth.uid() = user_id);
+
+-- Anyone can see public notes
+CREATE POLICY "Anyone can view public notes" 
+  ON notes 
+  FOR SELECT 
+  USING (is_public = true);
+
+-- Users can create notes for themselves
+CREATE POLICY "Users can create own notes" 
+  ON notes 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
+-- Users can update their own notes
+CREATE POLICY "Users can update own notes" 
+  ON notes 
+  FOR UPDATE 
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Users can delete their own notes
+CREATE POLICY "Users can delete own notes" 
+  ON notes 
+  FOR DELETE 
+  USING (auth.uid() = user_id);
+
+-- 4. Add indexes for performance
+CREATE INDEX idx_notes_user_id ON notes(user_id);
+CREATE INDEX idx_notes_public ON notes(is_public) WHERE is_public = true;
+```
+
+## Testing the Complete Example
+
+```sql
+-- Test as user 1
+INSERT INTO notes (title, content, user_id, is_public) 
+VALUES ('My Private Note', 'Secret content', auth.uid(), false);
+
+INSERT INTO notes (title, content, user_id, is_public) 
+VALUES ('My Public Note', 'Public content', auth.uid(), true);
+
+-- Should see both your notes
+SELECT * FROM notes;
+
+-- Switch to user 2 (different auth.uid())
+-- Should only see the public note from user 1
+SELECT * FROM notes;
+```
+
+## Next Steps
+
+- [Environment Variables Security](./environment-variables-security.md) - Secure your API keys
+- [Authentication Security](./authentication-security.md) - Secure your auth flow
+- [Common Security Mistakes](./common-security-mistakes.md) - Avoid these pitfalls

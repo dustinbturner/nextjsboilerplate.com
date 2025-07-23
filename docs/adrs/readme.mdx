@@ -1,0 +1,50 @@
+# 99 - Architecture Decision Records (ADRs)
+
+This section contains Architecture Decision Records documenting important technical decisions made in the project.
+
+## Contents
+
+ADRs document the context, decision, and consequences of significant architectural choices. Each ADR should follow a consistent format and be numbered sequentially.
+
+## ADR Format
+
+Each ADR should include:
+- **Title**: Brief description of the decision
+- **Status**: Proposed, Accepted, Deprecated, or Superseded
+- **Context**: The situation that led to the decision
+- **Decision**: What was decided
+- **Consequences**: The results of the decision, both positive and negative
+
+## Files to Add
+
+- `001-nextjs-app-router.md` - Decision to use Next.js App Router
+- `002-supabase-for-auth-db.md` - Decision to use Supabase for auth and database
+- `003-drizzle-orm.md` - Decision to use Drizzle ORM over Prisma
+- `004-tailwind-v4.md` - Decision to use Tailwind CSS v4
+- `005-feature-based-architecture.md` - Decision on feature-based folder structure
+- `006-server-components-first.md` - Decision to default to server components
+- `007-zod-validation.md` - Decision to use Zod for validation
+- `008-rls-security-model.md` - Decision to use Row Level Security
+
+## Template
+
+Use this template for new ADRs:
+
+```markdown
+# ADR-XXX: [Title]
+
+## Status
+[Proposed | Accepted | Deprecated | Superseded by ADR-XXX]
+
+## Context
+[Describe the situation that led to this decision]
+
+## Decision
+[Describe the decision that was made]
+
+## Consequences
+[Describe the positive and negative consequences of this decision]
+
+## Date
+[YYYY-MM-DD]
+```

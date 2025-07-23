@@ -1,0 +1,338 @@
+# Environment Variables Security
+
+## What Problem Does This Solve?
+
+Environment variables often contain the most sensitive data in your application - API keys, database credentials, and secrets. Poor environment variable security is the #1 cause of data breaches in web applications.
+
+## What Happens If You Get This Wrong?
+
+- **API keys exposed** in version control or client-side code
+- **Database credentials leaked** to unauthorized users
+- **Security tokens compromised** leading to account takeovers
+- **Compliance violations** and legal liability
+
+## The Golden Rules
+
+### ✅ DO
+
+1. **Never commit secrets to version control**
+2. **Use different values for different environments**
+3. **Validate environment variables at startup**
+4. **Use the principle of least privilege**
+5. **Rotate secrets regularly**
+
+### ❌ DON'T
+
+1. **Never use `NEXT_PUBLIC_` for secrets**
+2. **Never hardcode sensitive values**
+3. **Never share `.env` files in chat/email**
+4. **Never use production secrets in development**
+
+## Understanding Next.js Environment Variables
+
+### Server-Side Only (Secure)
+
+```bash
+# These are ONLY available on the server
+DATABASE_URL=postgresql://user:password@localhost:5432/db
+SUPABASE_SERVICE_ROLE_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
+STRIPE_SECRET_KEY=sk_test_...
+EMAIL_API_KEY=sg.abc123...
+```
+
+### Client-Side (Public)
+
+```bash
+# These are exposed to the browser - use carefully!
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
+NEXT_PUBLIC_APP_URL=https://yourapp.com
+NEXT_PUBLIC_ANALYTICS_ID=G-ABC123DEF
+```
+
+## Common Security Mistakes
+
+### ❌ Mistake 1: Exposing Secrets with NEXT_PUBLIC_
+
+```bash
+# NEVER DO THIS - Exposes your secret key to everyone!
+NEXT_PUBLIC_SUPABASE_SERVICE_KEY=your-secret-key
+NEXT_PUBLIC_DATABASE_PASSWORD=your-password
+NEXT_PUBLIC_STRIPE_SECRET_KEY=sk_live_...
+```
+
+**Why this is dangerous:**
+- Anyone can view these in browser dev tools
+- They're included in your JavaScript bundle
+- They're visible to all website visitors
+
+### ❌ Mistake 2: Committing .env Files
+
+```bash
+# .gitignore should include:
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env
+
+# But developers often forget and commit:
+git add .env.local  # DON'T DO THIS!
+```
+
+### ❌ Mistake 3: Using Production Secrets in Development
+
+```bash
+# Development .env.local
+DATABASE_URL=postgresql://prod-user:prod-pass@prod-db/prod  # DANGEROUS!
+STRIPE_SECRET_KEY=sk_live_real_money_key  # VERY DANGEROUS!
+```
+
+## Secure Environment Variable Setup
+
+### 1. File Structure
+
+```
+your-project/
+├── .env.example          # Template with dummy values (committed)
+├── .env.local           # Local development secrets (NOT committed)
+├── .env.development     # Development defaults (can be committed)
+├── .env.test           # Test environment (can be committed)
+└── .env.production     # Production (managed by deployment platform)
+```
+
+### 2. .env.example Template
+
+```bash
+# .env.example - Safe to commit
+# Copy this to .env.local and fill in real values
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Server-side only
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+
+# Optional: Third-party services
+STRIPE_SECRET_KEY=sk_test_your-test-key
+EMAIL_API_KEY=your-email-api-key
+```
+
+### 3. .env.local (Development)
+
+```bash
+# .env.local - NEVER commit this file
+# Real values for local development
+
+NEXT_PUBLIC_SUPABASE_URL=https://abcdefgh.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
+
+# Use test/development keys only
+SUPABASE_SERVICE_ROLE_KEY=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
+STRIPE_SECRET_KEY=sk_test_51ABC123...
+EMAIL_API_KEY=SG.test-key-123...
+```
+
+## Environment Variable Validation
+
+### Create a Validation Schema
+
+```typescript
+// src/lib/env.ts
+import { z } from 'zod'
+
+const envSchema = z.object({
+  // Public variables (available in browser)
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url('Invalid Supabase URL'),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, 'Supabase anon key required'),
+  NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  
+  // Server-side only variables
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  DATABASE_URL: z.string().url().optional(),
+  STRIPE_SECRET_KEY: z.string().startsWith('sk_').optional(),
+  EMAIL_API_KEY: z.string().optional(),
+})
+
+// Validate at startup
+export const env = envSchema.parse(process.env)
+
+// Type-safe environment variables
+export type Env = z.infer<typeof envSchema>
+```
+
+### Use in Your Application
+
+```typescript
+// src/lib/supabase/server.ts
+import { env } from '@/lib/env'
+
+export async function createClient() {
+  return createServerClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,  // Type-safe and validated
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    // ...
+  )
+}
+```
+
+## Production Environment Security
+
+### 1. Use Your Deployment Platform's Secrets Management
+
+**Vercel:**
+```bash
+# Set via Vercel dashboard or CLI
+vercel env add SUPABASE_SERVICE_ROLE_KEY production
+```
+
+**Netlify:**
+```bash
+# Set in Netlify dashboard under Site Settings → Environment Variables
+```
+
+**Railway/Render/etc:**
+- Use their respective environment variable interfaces
+- Never store secrets in your code or config files
+
+### 2. Different Values for Different Environments
+
+```bash
+# Development
+NEXT_PUBLIC_SUPABASE_URL=https://dev-project.supabase.co
+STRIPE_SECRET_KEY=sk_test_...
+
+# Staging
+NEXT_PUBLIC_SUPABASE_URL=https://staging-project.supabase.co
+STRIPE_SECRET_KEY=sk_test_...
+
+# Production
+NEXT_PUBLIC_SUPABASE_URL=https://prod-project.supabase.co
+STRIPE_SECRET_KEY=sk_live_...
+```
+
+## Security Best Practices
+
+### 1. Regular Secret Rotation
+
+```typescript
+// Create a script to check secret age
+// scripts/check-secret-age.ts
+const secretsToRotate = [
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'STRIPE_SECRET_KEY',
+  'EMAIL_API_KEY'
+]
+
+// Check when secrets were last rotated
+// Rotate every 90 days for high-security apps
+```
+
+### 2. Principle of Least Privilege
+
+```bash
+# ❌ Don't use admin/root keys everywhere
+DATABASE_URL=postgresql://admin:admin@db/prod
+
+# ✅ Use specific service accounts
+DATABASE_URL=postgresql://app_user:limited_pass@db/prod
+```
+
+### 3. Environment-Specific Validation
+
+```typescript
+// src/lib/env.ts
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+}).refine((data) => {
+  // In production, service role key is required
+  if (data.NODE_ENV === 'production') {
+    return !!data.SUPABASE_SERVICE_ROLE_KEY
+  }
+  return true
+}, {
+  message: "Service role key required in production"
+})
+```
+
+## Debugging Environment Variable Issues
+
+### 1. Check Variable Loading Order
+
+```typescript
+// Add this to debug environment loading
+console.log('Environment variables loaded:')
+console.log('NODE_ENV:', process.env.NODE_ENV)
+console.log('NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+console.log('Has service key:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+```
+
+### 2. Verify Client vs Server Context
+
+```typescript
+// This will be undefined on the server
+if (typeof window !== 'undefined') {
+  console.log('Client-side env:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+} else {
+  console.log('Server-side env:', process.env.SUPABASE_SERVICE_ROLE_KEY)
+}
+```
+
+### 3. Check Production Environment
+
+```bash
+# In your deployment platform, verify variables are set
+echo $NEXT_PUBLIC_SUPABASE_URL
+echo $SUPABASE_SERVICE_ROLE_KEY
+```
+
+## Emergency Response: Compromised Secrets
+
+### If Secrets Are Exposed:
+
+1. **Immediately rotate the compromised secrets**
+2. **Revoke the old keys in the service provider**
+3. **Update all environments with new keys**
+4. **Review access logs for unauthorized usage**
+5. **Consider if any data was accessed**
+
+### Example: Supabase Key Compromise
+
+1. Go to Supabase Dashboard → Settings → API
+2. Reset your service role key
+3. Update all environments with the new key
+4. Check Supabase logs for suspicious activity
+
+## Monitoring and Alerting
+
+### 1. Set Up Secret Scanning
+
+```yaml
+# .github/workflows/security.yml
+name: Security Scan
+on: [push, pull_request]
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+```
+
+### 2. Monitor for Exposed Secrets
+
+- Use GitHub's secret scanning
+- Set up alerts for exposed API keys
+- Regular security audits
+
+## Next Steps
+
+- [Authentication Security](./authentication-security.md) - Secure your auth flow
+- [API Security Checklist](./api-security-checklist.md) - Secure your endpoints
+- [Common Security Mistakes](./common-security-mistakes.md) - Avoid these pitfalls

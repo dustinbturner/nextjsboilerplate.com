@@ -1,0 +1,371 @@
+# Context Management Strategies
+
+## What Problem Does This Solve?
+
+AI assistants have limited context windows and can lose track of your project's patterns, decisions, and requirements over long conversations. Poor context management leads to inconsistent suggestions and repeated explanations.
+
+## What Happens If You Get This Wrong?
+
+- **Inconsistent code suggestions** that don't match your architecture
+- **Repeated questions** about the same project details
+- **Context drift** where AI forgets important constraints
+- **Wasted time** re-explaining project requirements
+
+## Understanding AI Context Limitations
+
+### Context Window Sizes
+
+| AI Assistant | Approximate Context | What This Means |
+|--------------|-------------------|-----------------|
+| Cursor | ~8K-32K tokens | ~6-24 pages of code |
+| Windsurf | ~32K-128K tokens | ~24-96 pages of code |
+| Claude Projects | ~200K tokens | ~150 pages of code |
+| GPT-4 | ~8K-32K tokens | ~6-24 pages of code |
+
+### What Counts as Context
+
+- **Your messages** and questions
+- **AI responses** and code suggestions
+- **File contents** that are referenced
+- **Rules files** (.cursorrules, .windsurfrules)
+- **Project documentation** (in Claude Projects)
+
+## Strategy 1: Effective Rules Files
+
+### Create Comprehensive Rules
+
+```
+# .cursorrules - Comprehensive Context
+
+## Project Identity
+NextJS 15+ boilerplate with App Router, Supabase, TypeScript, Tailwind CSS
+
+## Architecture Decisions (Critical Context)
+- Server Components by default, Client Components only for interactivity
+- Supabase with @supabase/ssr (NEVER auth-helpers-nextjs)
+- Row Level Security (RLS) on all tables
+- Security-first approach
+- Drizzle ORM for database operations
+
+## File Structure Context
+src/
+├── app/          # App Router pages
+├── components/   # Reusable components  
+├── lib/          # Utilities
+└── types/        # TypeScript types
+
+## Critical Patterns (Always Remember)
+```typescript
+// Server Component Pattern
+export default async function Page() {
+  const data = await fetchData()
+  return <Component data={data} />
+}
+
+// Client Component Pattern
+'use client'
+export function Interactive({ data }: Props) {
+  const [state, setState] = useState()
+  return <div>{/* interactive UI */}</div>
+}
+
+// Supabase Server Client (CORRECT)
+import { createServerClient } from '@supabase/ssr'
+// cookies: { getAll(), setAll() } pattern
+```
+
+## Anti-Patterns (Never Suggest)
+- auth-helpers-nextjs imports
+- Individual cookie get/set methods
+- Client-side service role key usage
+- Bypassing RLS policies
+```
+
+### Update Rules Based on Conversations
+
+```
+## Recent Decisions (Update Regularly)
+- [2024-01-15] Using Zod for all form validation
+- [2024-01-10] Implementing soft deletes with deleted_at column
+- [2024-01-05] Using Shadcn UI components exclusively
+
+## Common Mistakes I Make
+- Forgetting to enable RLS on new tables
+- Using useEffect for data fetching in Server Components
+- Not implementing proper loading states
+```
+
+## Strategy 2: Context Anchoring
+
+### Start Conversations with Context
+
+```
+I'm working on a NextJS 15 App Router project with Supabase auth. 
+I need help implementing [specific feature] following our established patterns:
+- Server Components by default
+- RLS for data security  
+- @supabase/ssr (not auth-helpers-nextjs)
+- TypeScript with proper typing
+
+Here's the relevant code: [paste code]
+```
+
+### Use Context Reminders
+
+```
+Remember: This project uses App Router (not Pages Router) and 
+@supabase/ssr with the getAll/setAll cookie pattern.
+
+Can you help me add authentication to this component?
+```
+
+## Strategy 3: Conversation Management
+
+### Break Down Complex Tasks
+
+```
+❌ Bad: "Help me build a complete user dashboard with auth, profiles, settings, and data visualization"
+
+✅ Good: 
+1. "Help me set up the dashboard layout with proper authentication"
+2. "Now help me add the user profile section"
+3. "Next, let's implement the settings page"
+4. "Finally, add the data visualization components"
+```
+
+### Use Checkpoints
+
+```
+Before we continue, let me confirm our approach:
+- We're using Server Components for the dashboard layout
+- User data is fetched server-side with RLS
+- Interactive features are isolated in Client Components
+- Forms use Server Actions with Zod validation
+
+Is this correct? Should we proceed with this pattern?
+```
+
+## Strategy 4: Documentation as Context
+
+### Maintain Living Documentation
+
+```markdown
+# Project Context Document
+
+## Current Architecture
+- Next.js 15.0.3 with App Router
+- Supabase 2.39.0 with @supabase/ssr
+- TypeScript 5.3.0
+- Tailwind CSS 4.0.0
+- Drizzle ORM 0.29.0
+
+## Recent Decisions
+- [Date] Decision made and reasoning
+- [Date] Pattern established and why
+
+## Active Patterns
+- Authentication flow implementation
+- Database schema with RLS
+- Component organization strategy
+
+## Known Issues
+- [Issue] and current workaround
+- [Limitation] and planned solution
+```
+
+### Reference Documentation in Conversations
+
+```
+I'm following the patterns documented in our project context.
+Can you help me implement [feature] using our established:
+- Authentication patterns (see auth-flow.md)
+- Database patterns (see schema-design.md)  
+- Component patterns (see component-guide.md)
+```
+
+## Strategy 5: Code Context Management
+
+### Provide Relevant Code Only
+
+```
+❌ Too much context: [Paste entire 500-line file]
+
+✅ Focused context:
+Here's the relevant component structure:
+```typescript
+// Current implementation (lines 45-67)
+export function UserProfile({ userId }: Props) {
+  // existing code
+}
+```
+
+I need to add [specific feature] to this component.
+```
+
+### Use Code Comments as Context
+
+```typescript
+// Context: This is a Server Component that fetches user data
+// Pattern: We use RLS to ensure users only see their own data
+// Security: Never expose service role key to client
+export default async function UserDashboard() {
+  const supabase = await createClient() // Server client with RLS
+  // ... implementation
+}
+```
+
+## Strategy 6: Claude Projects Setup
+
+### Organize Project Knowledge
+
+```
+Claude Project: NextJS Boilerplate
+├── Architecture Overview
+├── Key Implementation Patterns  
+├── Security Requirements
+├── Database Schema
+├── Component Examples
+└── Common Pitfalls
+```
+
+### Project Instructions Template
+
+```markdown
+# NextJS Boilerplate - Claude Project
+
+## Context
+Modern Next.js application with security-first approach.
+
+## Key Constraints
+1. NEVER use @supabase/auth-helpers-nextjs (deprecated)
+2. ALWAYS use @supabase/ssr with getAll/setAll pattern
+3. Enable RLS on all database tables
+4. Use Server Components by default
+
+## Architecture
+- App Router (not Pages Router)
+- Server-side rendering with selective client interactivity
+- Type-safe database operations with Drizzle
+- Comprehensive input validation with Zod
+
+## When helping:
+- Always follow established patterns
+- Provide security-conscious solutions
+- Use TypeScript strictly
+- Include proper error handling
+```
+
+## Strategy 7: Conversation Patterns
+
+### Effective Prompting
+
+```
+Context: NextJS 15 App Router + Supabase + TypeScript project
+
+Task: [Specific request]
+
+Constraints:
+- Use Server Components where possible
+- Follow RLS patterns for data access
+- Implement proper TypeScript typing
+- Include error handling
+
+Current code: [Relevant code snippet]
+
+Question: [Specific question]
+```
+
+### Iterative Development
+
+```
+Phase 1: "Let's start with the basic structure"
+Phase 2: "Now let's add the interactive features"  
+Phase 3: "Finally, let's add error handling and validation"
+
+Each phase builds on the previous with maintained context.
+```
+
+## Strategy 8: Context Validation
+
+### Regular Context Checks
+
+```
+Quick context check - we're still working on:
+- NextJS 15 with App Router ✓
+- Supabase with @supabase/ssr ✓  
+- TypeScript with strict typing ✓
+- RLS for data security ✓
+
+Is this still accurate for our current task?
+```
+
+### Catch Context Drift
+
+```
+I notice you suggested using Pages Router, but we're using App Router.
+Let me clarify our current setup: [provide context]
+```
+
+## Advanced Context Techniques
+
+### Context Layering
+
+```
+Global Context: Project architecture and patterns
+Feature Context: Specific feature requirements  
+Task Context: Current implementation details
+Code Context: Relevant code snippets
+```
+
+### Context Compression
+
+```
+# Context Summary
+Project: NextJS 15 + Supabase + TS
+Pattern: Server-first with client islands
+Security: RLS + input validation
+Current: Implementing user dashboard
+Issue: Need to add profile editing
+```
+
+## Troubleshooting Context Issues
+
+### AI Suggests Wrong Patterns
+
+1. **Reinforce context** with specific reminders
+2. **Update rules files** with anti-patterns
+3. **Start new conversation** if context is too polluted
+
+### Context Window Exceeded
+
+1. **Summarize previous decisions**
+2. **Start fresh conversation** with context summary
+3. **Focus on current task** only
+
+### Inconsistent Suggestions
+
+1. **Check for conflicting context** in rules files
+2. **Clarify priorities** in conversation
+3. **Provide specific examples** of desired patterns
+
+## Measuring Context Effectiveness
+
+### Good Context Indicators
+
+- AI suggests appropriate patterns consistently
+- Minimal need to correct architectural decisions
+- Code suggestions match project style
+- Security patterns are followed automatically
+
+### Poor Context Indicators
+
+- Repeated explanations of same concepts
+- Suggestions that conflict with architecture
+- Generic advice that doesn't fit project
+- Security anti-patterns suggested
+
+## Next Steps
+
+- [Effective Prompt Engineering](./effective-prompt-engineering.md) - Write better prompts
+- [AI-Assisted Debugging](./ai-assisted-debugging.md) - Debug with AI help
+- [AI Code Review Practices](./ai-code-review-practices.md) - Review code with AI

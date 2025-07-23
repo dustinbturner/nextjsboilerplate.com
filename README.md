@@ -1,8 +1,54 @@
-# NextJS Boilerplate (for Vibe Coders)
+# 🚧 NextJS Boilerplate (for Vibe Coders) - Under Construction
+
+> **⚠️ WORK IN PROGRESS**: This boilerplate is actively being developed and refined. Some features may be incomplete or subject to change. Check the todo list below for current status.
 
 An opinionated, **teachable** starter kit for building secure, scalable **Next.js 15.4.3** (App Router) apps with **TypeScript**, **Tailwind CSS v4 (stable)**, **shadcn/ui**, **Supabase** (Auth + Postgres), and **Drizzle ORM**.  
 
 Every important file starts with a short header block explaining **what it does, why it exists, and how to extend it**. The `/docs` folder walks you through best practices: security, schema design, API patterns, testing, and more.
+
+## 📋 Project Status & Todo List
+
+### ✅ Completed Features
+- [x] Next.js 15.4.3 with App Router setup
+- [x] TypeScript configuration with strict mode
+- [x] Tailwind CSS v4 (stable) integration
+- [x] shadcn/ui component system
+- [x] Supabase authentication setup
+- [x] Drizzle ORM configuration
+- [x] Basic project structure and organization
+- [x] Documentation system with 120+ pages
+- [x] Security headers and middleware
+- [x] Environment variable management
+- [x] Build system optimization
+
+### 🚧 In Progress
+- [ ] **MDX Documentation System**: Resolving runtime compilation issues
+- [ ] **Database Schema**: Finalizing user and content tables
+- [ ] **Authentication Flow**: Testing all auth routes and edge cases
+- [ ] **Dashboard Components**: Building user dashboard interface
+
+### 📅 Planned Features
+- [ ] **Stripe Integration**: Billing and subscription management
+- [ ] **Email System**: Transactional email templates
+- [ ] **Testing Suite**: Unit and integration tests with Vitest
+- [ ] **E2E Testing**: Playwright test setup
+- [ ] **Background Jobs**: Inngest/QStash integration
+- [ ] **Monitoring**: Sentry error tracking and analytics
+- [ ] **CI/CD Pipeline**: GitHub Actions workflow
+- [ ] **Performance**: Bundle analysis and optimization
+- [ ] **SEO**: Sitemap, robots.txt, and meta tag optimization
+- [ ] **Accessibility**: WCAG compliance audit and fixes
+
+### 🐛 Known Issues
+- MDX compilation errors in documentation pages (workaround implemented)
+- Some TypeScript warnings in middleware (non-blocking)
+- Rate limiting implementation is stubbed
+
+### 🎯 Next Milestones
+1. **v0.1.0**: Complete core authentication and basic dashboard
+2. **v0.2.0**: Add billing integration and user management
+3. **v0.3.0**: Implement background jobs and email system
+4. **v1.0.0**: Production-ready with full test coverage
 
 ---
 
@@ -62,56 +108,108 @@ Visit [http://localhost:3000](http://localhost:3000)
 ```txt
 .
 ├─ README.md
-├─ SECURITY.md                     # How we think about & report security issues
-├─ CONTRIBUTING.md                 # (Optional) external contributions
-├─ drizzle/                        # Generated SQL migrations
-├─ public/                         # Static assets (favicons, OG images)
-├─ scripts/                        # Seeders, code mods, checks
+├─ CLAUDE.md                       # AI development notes and context
+├─ components.json                 # shadcn/ui configuration
+├─ content/                        # MDX content files
+│  └─ blog/                        # Blog posts
+│     ├─ building-secure-nextjs-apps.mdx
+│     ├─ mastering-tailwind-design-systems.mdx
+│     └─ welcome-to-nextjs-boilerplate.mdx
+├─ docs/                           # Comprehensive documentation (120+ pages)
+│  ├─ README.md
+│  ├─ adrs/                        # Architecture Decision Records
+│  ├─ ai-tools/                    # AI development guides
+│  ├─ api-design/                  # API patterns and best practices
+│  ├─ app-router/                  # Next.js App Router guides
+│  ├─ authentication/              # Auth implementation guides
+│  ├─ database/                    # Database design and queries
+│  ├─ deployment/                  # Production deployment guides
+│  ├─ frontend/                    # Frontend architecture patterns
+│  ├─ patterns/                    # Common development patterns
+│  ├─ quick-start/                 # Getting started guides
+│  ├─ security/                    # Security best practices
+│  ├─ styling/                     # Tailwind and design system
+│  ├─ supabase/                    # Supabase integration guides
+│  ├─ testing/                     # Testing strategies and setup
+│  └─ troubleshooting/             # Common issues and solutions
+├─ public/                         # Static assets
+│  ├─ file.svg
+│  ├─ globe.svg
+│  ├─ next.svg
+│  ├─ vercel.svg
+│  └─ window.svg
 ├─ src/
 │  ├─ app/                         # Next.js App Router
-│  │  ├─ (marketing)/              # Public pages
-│  │  ├─ (auth)/                   # Auth flows (login, sign-up, reset, etc.)
-│  │  ├─ (dashboard)/              # Protected area (requires auth)
-│  │  ├─ api/                      # Route handlers (REST/webhooks/etc.)
-│  │  ├─ sitemap.ts / robots.txt   # SEO
-│  │  └─ layout.tsx / page.tsx
+│  │  ├─ (auth)/auth/              # Authentication routes
+│  │  │  ├─ confirm/               # Email confirmation
+│  │  │  ├─ error/                 # Auth error handling
+│  │  │  ├─ forgot-password/       # Password reset
+│  │  │  ├─ login/                 # Sign in page
+│  │  │  ├─ sign-up/               # Registration page
+│  │  │  ├─ sign-up-success/       # Post-registration
+│  │  │  └─ update-password/       # Password update
+│  │  ├─ (blog)/blog/              # Blog system
+│  │  │  ├─ [...slug]/             # Dynamic blog routes
+│  │  │  └─ page.tsx               # Blog listing
+│  │  ├─ (dashboard)/dashboard/    # Protected dashboard
+│  │  │  ├─ data.json              # Demo dashboard data
+│  │  │  └─ page.tsx               # Dashboard home
+│  │  ├─ (docs)/docs/              # Documentation system
+│  │  │  ├─ [...slug]/             # Dynamic doc routes
+│  │  │  └─ page.tsx               # Docs home
+│  │  ├─ (marketing)/              # Public marketing pages
+│  │  ├─ favicon.ico
+│  │  ├─ globals.css               # Global styles
+│  │  ├─ layout.tsx                # Root layout
+│  │  └─ page.tsx                  # Home page
 │  ├─ components/
-│  │  ├─ ui/                       # shadcn/ui primitives
-│  │  ├─ forms/                    # Form wrappers, inputs, zod resolvers
-│  │  └─ layout/                   # Header, Sidebar, etc.
-│  ├─ features/                    # Vertical slices (user, billing, content, ...)
-│  │  └─ user/
-│  │     ├─ components/
-│  │     ├─ server/                # Server actions, loaders
-│  │     ├─ hooks/
-│  │     ├─ schema.ts
-│  │     └─ README.md
-│  ├─ db/
-│  │  ├─ schema/                   # Drizzle table defs
-│  │  ├─ queries/                  # Complex query builders
-│  │  └─ index.ts                  # Drizzle client (server-only)
+│  │  ├─ auth/                     # Authentication components
+│  │  │  ├─ forgot-password-form.tsx
+│  │  │  ├─ login-form.tsx
+│  │  │  ├─ logout-button.tsx
+│  │  │  ├─ sign-up-form.tsx
+│  │  │  └─ update-password-form.tsx
+│  │  ├─ dashboard/                # Dashboard components
+│  │  │  ├─ app-sidebar.tsx
+│  │  │  ├─ chart-area-interactive.tsx
+│  │  │  ├─ data-table.tsx
+│  │  │  ├─ nav-*.tsx              # Navigation components
+│  │  │  ├─ section-cards.tsx
+│  │  │  └─ site-header.tsx
+│  │  ├─ docs/                     # Documentation components
+│  │  │  └─ docs-sidebar.tsx
+│  │  ├─ marketing/                # Marketing page components
+│  │  │  ├─ construction-banner.tsx
+│  │  │  ├─ features.tsx
+│  │  │  ├─ footer.tsx
+│  │  │  ├─ header.tsx
+│  │  │  └─ hero.tsx
+│  │  ├─ mdx/                      # MDX rendering components
+│  │  │  └─ mdx-content.tsx
+│  │  └─ ui/                       # shadcn/ui primitives
+│  │     ├─ avatar.tsx
+│  │     ├─ badge.tsx
+│  │     ├─ button.tsx
+│  │     ├─ card.tsx
+│  │     ├─ chart.tsx
+│  │     ├─ input.tsx
+│  │     ├─ table.tsx
+│  │     └─ ... (20+ UI components)
+│  ├─ hooks/
+│  │  └─ use-mobile.ts             # Responsive design hook
 │  ├─ lib/
-│  │  ├─ auth/                     # Supabase clients (server/client)
-│  │  ├─ env.ts                    # Typed env loader (zod)
-│  │  ├─ rate-limit.ts             # (Stub) rate limiting helper
-│  │  ├─ validators.ts             # Shared zod schemas
-│  │  └─ utils.ts
-│  ├─ styles/                      # Tailwind + global CSS
-│  ├─ middleware.ts                # Route protection, headers
-│  ├─ types/                       # Global TS types
-│  └─ test/                        # Unit/integration tests
-└─ docs/                           # Long-form documentation
-   ├─ 00 - Project Setup/
-   ├─ 01 - Security/
-   ├─ 02 - Design_System_UI/
-   ├─ 03 - Content_Management/
-   ├─ 04 - Database/
-   ├─ 05 - API_and_Server_Actions/
-   ├─ 06 - Authentication/
-   ├─ 07 - Frontend_Architecture/
-   ├─ 08 - Testing_CI_CD/
-   ├─ 09 - Observability_Ops/
-   └─ 99 - ADRs/
+│  │  ├─ mdx.ts                    # MDX processing utilities
+│  │  ├─ supabase/                 # Supabase client configuration
+│  │  │  ├─ client.ts              # Browser client
+│  │  │  ├─ middleware.ts          # Auth middleware
+│  │  │  └─ server.ts              # Server client
+│  │  └─ utils.ts                  # Utility functions
+│  └─ middleware.ts                # Route protection & headers
+├─ tailwind.config.ts              # Tailwind CSS v4 configuration
+├─ tsconfig.json                   # TypeScript configuration
+├─ next.config.ts                  # Next.js configuration
+├─ package.json                    # Dependencies and scripts
+└─ .env.example                    # Environment variables template
 ```
 
 > Each non-trivial folder has its own `README.md` to explain scope, conventions, and anti-patterns.
